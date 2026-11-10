@@ -1,0 +1,27 @@
+会话管理安全
+
+会话管理是Web认证的核心，Cookie/Session安全直接影响账号安全。
+
+一、Session工作原理
+1. 用户登录成功，服务器生成Session ID
+2. Session ID存在Cookie里发给浏览器
+3. 每次请求带上Cookie，服务器识别用户
+
+二、常见会话攻击
+1. 会话劫持：偷到别人的Session ID，冒充登录
+2. 会话固定：攻击者设置Session ID，骗用户登录
+3. 会话劫持：XSS偷Cookie
+4. CSRF：利用登录状态发请求
+
+三、Cookie安全属性
+- HttpOnly：JS不能读，防XSS偷Cookie
+- Secure：只在HTTPS下传
+- SameSite：限制跨站携带，防CSRF
+- Path/Domain：限制Cookie作用范围
+
+四、最佳实践
+1. 登录后重新生成Session ID（防会话固定）
+2. 设置所有安全属性
+3. Session过期时间不要太长
+4. 敏感操作重新验证密码
+5. 登出时服务器端销毁Session

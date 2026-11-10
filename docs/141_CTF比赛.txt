@@ -1,0 +1,14 @@
+CTF夺旗赛
+
+一、CTF类型
+- Web安全：找Web漏洞拿flag
+- Pwn：二进制漏洞利用
+- Reverse：逆向工程
+- Crypto：密码学
+- Misc：杂项
+- Mobile：移动安全
+
+二、为什么打CTF好
+- 实战练手
+- 找工作加分
+- 学校招安全岗都看CTF成绩

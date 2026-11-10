@@ -1,0 +1,15 @@
+HTTP协议安全问题
+
+一、明文传输
+- HTTP不加密
+- 容易被窃听篡改
+
+二、Cookie安全
+- HttpOnly
+- Secure
+- SameSite
+
+三、Header安全
+- HSTS
+- CSP
+- X-Frame-Options

@@ -1,0 +1,16 @@
+XSS进阶与绕过
+
+一、XSS绕过技巧
+- 标签变形：<script>→<img src=x onerror=>
+- 事件变形：onerror→onload→onmouseover
+- 编码绕过：HTML实体编码、JS编码
+- 过滤绕过：过滤script就用img
+
+二、XSS平台
+- BeEF：XSS攻击框架
+- 可以偷cookie、截图、记录键盘
+
+三、CSP绕过
+- 用白名单里的CDN
+- 用JSONP接口
+- 用base标签

@@ -1,0 +1,9 @@
+IDS检测规则编写
+
+一、Snort规则格式
+alert tcp any any -> any 80 (msg:"SQL Injection detected"; content:"union select"; sid:1000001;)
+
+二、规则优化
+- 用offset和depth加速
+- 用pcre正则
+- 聚合相关告警

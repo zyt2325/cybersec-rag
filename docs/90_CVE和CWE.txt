@@ -1,0 +1,18 @@
+CVE与CWE
+
+CVE和CWE是漏洞的通用编号标准。
+
+一、CVE
+- Common Vulnerabilities and Exposures
+- 每个公开漏洞一个编号，如CVE-2021-44228（Log4j）
+- 全球统一引用
+
+二、CWE
+- Common Weakness Enumeration
+- 漏洞类型分类，如SQL注入是CWE-89
+- 从根源上分类
+
+三、CVSS
+- 漏洞严重程度评分
+- 0-10分
+- 分低危中危高危严重

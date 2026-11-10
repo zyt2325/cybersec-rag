@@ -1,0 +1,34 @@
+CSP内容安全策略
+
+CSP是浏览器安全机制，通过HTTP头告诉浏览器允许加载哪些资源。
+
+一、CSP解决什么问题
+- XSS攻击：恶意脚本注入页面执行
+- 数据泄露：把数据发到攻击者服务器
+- 点击劫持
+
+二、CSP工作原理
+服务器返回Content-Security-Policy头
+浏览器加载资源时检查是否符合策略
+不符合就拦截
+
+三、常见指令
+- default-src：默认规则
+- script-src：允许加载的JS
+- style-src：允许加载的CSS
+- img-src：允许加载的图片
+- connect-src：允许发请求的地址
+- frame-src：允许嵌套的iframe
+
+四、示例
+Content-Security-Policy: default-src 'self'; script-src 'self' cdn.example.com
+意思是：只能从本域和指定CDN加载JS
+
+五、CSP报告
+- report-uri：违规时浏览器上报
+- 收集违规报告优化策略
+
+六、与XSS防御的关系
+- CSP是XSS的第二道防线
+- 即使XSS注入了恶意脚本，CSP也可能拦住执行
+- nonce/hash方式更安全

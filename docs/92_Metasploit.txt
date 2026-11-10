@@ -1,0 +1,19 @@
+Metasploit渗透测试框架
+
+Metasploit是最常用的渗透测试工具。
+
+一、是什么
+- 开源渗透测试框架
+- 有海量exploit模块
+- 有payload生成器
+
+二、用途
+- 验证漏洞可利用性
+- 红队演练
+- CTF比赛
+
+三、模块
+1. Exploit：漏洞利用
+2. Payload：攻击成功后执行的代码
+3. Auxiliary：辅助扫描
+4. Post：攻击成功后后渗透

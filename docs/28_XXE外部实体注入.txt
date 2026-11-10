@@ -1,0 +1,31 @@
+XXE外部实体注入
+
+XXE是XML解析器漏洞，攻击者通过构造恶意XML读取服务器文件。
+
+一、原理
+XML支持外部实体引用，攻击者定义一个实体读取本地文件，XML解析器就会把文件内容返回。
+
+二、攻击示例
+<?xml version="1.0"?>
+<!DOCTYPE foo [
+  <!ENTITY xxe SYSTEM "file:///etc/passwd">
+]>
+<user>&xxe;</user>
+解析后返回系统用户列表
+
+三、能做什么
+1. 读取服务器任意文件
+2. 攻击内网服务（类似SSRF）
+3. 拒绝服务（ Billion Laughs攻击）
+
+四、哪些场景有XXE
+- 接受XML格式的API
+- SOAP接口
+- 上传XML文件
+- RSS解析
+
+五、防御方法
+1. 禁用外部实体：现代XML库默认已禁用
+2. 用JSON代替XML
+3. 升级XML解析库
+4. 过滤用户输入的XML

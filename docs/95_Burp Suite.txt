@@ -1,0 +1,14 @@
+Burp Suite Web渗透测试
+
+Burp是Web渗透测试必备工具。
+
+一、核心功能
+1. Proxy代理：抓浏览器请求改包
+2. Scanner：自动扫Web漏洞
+3. Intruder：暴力破解
+4. Repeater：重发请求改参数
+5. Decoder：编码解码
+
+二、用途
+- 测试自己的Web应用安全
+- 找SQL注入XSS等漏洞

@@ -1,0 +1,17 @@
+DDoS攻击类型详解
+
+一、 volumetric攻击
+- UDP Flood：发大量UDP包
+- ICMP Flood：ping洪水
+- NTP反射：放大攻击
+- DNS反射：放大攻击
+
+二、协议攻击
+- SYN Flood：利用TCP三次握手漏洞
+- ACK Flood：占满连接表
+- SSL Flood：耗尽SSL握手资源
+
+三、应用层攻击
+- HTTP Flood：模拟真人请求
+- CC攻击：刷页面
+- 最难防，因为看起来像正常流量

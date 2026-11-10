@@ -1,0 +1,17 @@
+CSRF进阶防御
+
+一、SameSite Cookie详解
+- Strict：完全禁止跨站携带
+- Lax：顶层导航GET允许
+- None：都允许（要配合Secure）
+
+二、CSRF Token实现
+- 服务器生成随机token存在session
+- 表单里带这个token
+- 提交时验证token是否匹配
+- 每个用户每个表单不同
+
+三、双重Cookie验证
+- token存在Cookie里
+- 请求时把Cookie里的token放到header里
+- 服务器对比两个是否一致

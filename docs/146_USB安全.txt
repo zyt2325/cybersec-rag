@@ -1,0 +1,11 @@
+USB安全风险
+
+一、USB攻击
+- BadUSB：伪装成键盘输入
+- U盘病毒：autorun传播
+- O.Bit：投喂攻击
+
+二、防护
+- 不插陌生U盘
+- 关autorun
+- 用USB隔离器

@@ -1,0 +1,33 @@
+防火墙与网络访问控制
+
+防火墙是网络安全的第一道防线，用于控制进出网络的流量。
+
+一、防火墙类型
+1. 包过滤防火墙：根据IP地址、端口号、协议类型过滤数据包，工作在网络层
+2. 状态检测防火墙：跟踪TCP连接状态，只允许已建立连接的数据包通过
+3. 应用层防火墙（WAF）：解析应用层协议（HTTP/HTTPS），拦截SQL注入、XSS等攻击
+4. 下一代防火墙（NGFW）：集成入侵防御、应用识别、VPN等功能
+
+二、Netfilter/Iptables（Linux防火墙）
+Linux内核内置的防火墙框架，用户态工具为iptables或nftables。
+- 五个内置表：filter（过滤）、nat（地址转换）、mangle、raw、security
+- 五个内置链：INPUT（入站）、OUTPUT（出站）、FORWARD（转发）、PREROUTING、POSTROUTING
+- 基本操作：
+  * 查看规则：iptables -L -n -v
+  * 允许SSH：iptables -A INPUT -p tcp --dport 22 -j ACCEPT
+  * 拒绝其他：iptables -A INPUT -j DROP
+
+三、访问控制列表（ACL）
+路由器/交换机上的流量过滤规则，按顺序匹配。
+- 标准ACL：只检查源IP（编号1-99）
+- 扩展ACL：检查源/目的IP、端口、协议（编号100-199）
+
+四、DMZ（隔离区）
+在内部网络和外部网络之间建立的一个缓冲子网，放置对外提供服务的服务器（Web、邮件、DNS）。即使DMZ被攻破，内部网络仍然受到保护。
+
+五、最佳实践
+1. 默认拒绝所有，只开放必要端口（白名单原则）
+2. 定期审计防火墙规则，删除过期规则
+3. 管理端口（SSH/RDP）只允许指定管理IP访问
+4. 结合入侵检测系统（IDS）和入侵防御系统（IPS）
+5. 记录日志并定期分析异常流量

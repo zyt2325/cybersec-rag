@@ -1,0 +1,32 @@
+HTTPS与TLS协议安全
+
+HTTPS是HTTP的安全版本，通过TLS协议加密通信内容，防止窃听和篡改。
+
+一、HTTP vs HTTPS
+- HTTP：明文传输，端口80，易被窃听和篡改
+- HTTPS：加密传输，端口443，保证机密性、完整性、身份认证
+
+二、TLS握手过程
+1. 客户端发送支持的TLS版本和加密套件
+2. 服务器返回证书和选定的加密套件
+3. 客户端验证证书合法性
+4. 双方协商生成会话密钥
+5. 之后用会话密钥加密通信
+
+三、SSL证书类型
+1. DV（域名验证）：只验证域名，最便宜
+2. OV（组织验证）：验证企业身份
+3. EV（扩展验证）：最高级别验证，地址栏显示公司名
+
+四、常见TLS配置问题
+1. 支持过时的SSLv3、TLS 1.0/1.1：应禁用，只保留TLS 1.2+
+2. 弱加密套件：如RC4、3DES应禁用
+3. 证书过期或自签名证书
+4. 缺少HSTS头
+5. 未启用前向保密（Perfect Forward Secrecy）
+
+五、安全响应头
+- HSTS：Strict-Transport-Security，强制HTTPS
+- CSP：Content-Security-Policy，防止XSS
+- X-Frame-Options：防止点击劫持
+- X-Content-Type-Options：防止MIME嗅探
