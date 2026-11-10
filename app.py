@@ -17,7 +17,7 @@ load_dotenv()
 try:
     DASHSCOPE_API_KEY = st.secrets["DASHSCOPE_API_KEY"]
 except:
-    DASHSCOPE_API_KEY = os.getenv("DASHSCOPE_API_KEY")
+    DASHSCOPE_API_KEY = "sk-ws-H.PYMLRMX.Fu2x.MEQCIF4oG83ILR-C5tREEjKrhueW8Z17wwtMRTc3c1dG4w4tAiAlHCHMXJMzv7bFMdbObAQpb5yl4Qz08ut_7uLsO-cA8g"
 BASE_URL = "https://dashscope.aliyuncs.com/compatible-mode/v1"
 VECTOR_DIR = os.path.join(os.path.dirname(__file__), "vector_store")
 DOCS_DIR = os.path.join(os.path.dirname(__file__), "docs")
