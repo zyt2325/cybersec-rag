@@ -1,0 +1,31 @@
+Cobalt Strike原理与检测  
+一、基本概念  
+1. Cobalt Strike是基于Java开发的红队协作渗透测试平台，核心功能包括命令与控制（C2）、横向移动和后渗透任务编排。  
+2. 其架构分为Team Server（服务端）和Client（图形化操作端），通信默认使用HTTPS协议模拟合法流量。  
+3. Beacon是部署在目标主机上的轻量级载荷，支持多种执行方式（如Reflective DLL、Shellcode、Process Hollowing）。  
+4. 产品定位为高级红队工具，非公开源码，商业授权使用，社区存在大量逆向分析与检测研究资料。  
+5. Beacon默认采用Sleep Mask机制混淆内存特征，并支持Malleable C2配置实现C2流量高度定制化。  
+
+二、原理与关键机制  
+1. Beacon通过HTTP(S)轮询Team Server获取指令，响应体经AES或XOR加密，密钥由会话协商生成。  
+2. Malleable C2配置文件定义HTTP请求头、URI路径、参数名、响应解析逻辑及元数据编码方式，可模拟常见Web服务行为。  
+3. Sleep时间、Jitter扰动、进程注入目标、内存驻留方式等均通过C2指令动态调整，规避静态规则匹配。  
+4. Beacon支持Stageless与Staged两种载荷模式：前者含完整功能，后者依赖Team Server分阶段加载后续模块。  
+5. 使用反射式DLL注入将Beacon载荷注入合法进程（如explorer.exe、svchost.exe），绕过传统API钩子监控。  
+6. Beacon内存中不写入磁盘文件，关键结构（如配置、密钥、任务队列）加密存储于堆内存并定期擦除。  
+
+三、典型类型与常见问题  
+1. 常见变种包括HTTPS Beacon、DNS Beacon、SMB Beacon及自定义协议Beacon，其中DNS Beacon易绕过出站HTTP白名单。  
+2. 攻击者常利用Office宏、LNK文件、恶意文档嵌入Stageless Beacon，或通过PowerShell/MSHTA下载Staged载荷。  
+3. Malleable C2配置不当会导致HTTP指纹异常，如User-Agent与TLS Client Hello不匹配、响应Content-Type与实际数据不符。  
+4. Beacon内存中存在特征字符串（如beacon.dll导出函数名、硬编码的AES密钥调度表片段），可被EDR内存扫描捕获。  
+5. 长期运行的Beacon可能因心跳间隔固定、响应延迟规律性暴露C2通信时序特征。  
+6. 使用非标准端口或自签名证书的HTTPS Beacon，在SSL/TLS深度包检测中易触发证书信任链告警。  
+
+四、防御措施与实践建议  
+1. 部署网络层SSL/TLS解密设备，结合JA3/JA3S指纹识别异常客户端TLS握手行为。  
+2. 在终端启用ETW日志采集，监控CreateRemoteThread、NtAllocateVirtualMemory（MEM_COMMIT|MEM_RESERVE）、SetThreadContext等可疑API调用序列。  
+3. 对HTTP/S流量实施内容级检测：校验URI随机性、参数熵值、响应体结构一致性及HTTP头字段组合合法性。  
+4. 利用YARA规则扫描内存镜像，匹配Beacon特征字符串、硬编码密钥模板及反射式注入典型代码模式。  
+5. 实施最小权限原则，禁用Office宏、PowerShell脚本执行及WMI远程命令，限制非必要进程注入能力。  
+6. 定期更新EDR厂商提供的Cobalt Strike IOC签名库，并结合威胁情报平台同步Malleable C2配置哈希与域名列表。

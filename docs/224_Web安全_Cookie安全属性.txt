@@ -1,0 +1,29 @@
+Cookie安全属性
+
+一、基本概念  
+1. Cookie安全属性是服务器通过Set-Cookie响应头向浏览器声明的布尔型标志位，用于约束客户端对Cookie的存储与传输行为。  
+2. 主要安全属性包括Secure、HttpOnly、SameSite、Partitioned（Chrome 119+）及过期策略（Expires/Max-Age），不包含Domain和Path等作用域控制字段。  
+3. 浏览器仅在满足全部声明属性条件时才发送对应Cookie，属性缺失或错误配置将导致安全边界失效。  
+4. 安全属性由服务端单向设置，客户端不可通过JavaScript读取或修改其值，但可检测部分属性是否生效（如HttpOnly无法通过document.cookie读取）。  
+
+二、原理与关键机制  
+1. Secure属性强制Cookie仅通过HTTPS协议传输，防止明文HTTP连接中被中间人窃听或篡改。  
+2. HttpOnly属性禁止JavaScript访问document.cookie和XMLHttpRequest/Fetch的Cookie头，阻断XSS场景下的Cookie盗取路径。  
+3. SameSite属性通过限制跨站请求携带Cookie的时机，缓解CSRF攻击：Strict最严格，Lax为默认推荐，None需配合Secure强制启用。  
+4. Partitioned属性启用Storage Partitioning机制，使第三方上下文中的Cookie按顶级网站隔离存储，抑制跨站跟踪。  
+5. Max-Age优先级高于Expires，两者均控制Cookie生命周期；若同时存在且冲突，以Max-Age为准，过期后浏览器立即删除该Cookie。  
+
+三、典型类型与常见问题  
+1. 缺失Secure属性：HTTP页面或混合内容（HTTP资源加载HTTPS页面）下Cookie被明文传输，易遭嗅探劫持。  
+2. 忽略HttpOnly：登录态Cookie未设此属性，XSS漏洞可直接提取session_id并重放认证请求。  
+3. SameSite=None误配：未同步设置Secure属性时，现代浏览器拒绝接受该Cookie，导致跨站功能异常且无明确报错。  
+4. Domain属性滥用：设置Domain=.example.com允许子域共享Cookie，若子域存在未授权托管或XSS风险，将扩大会话泄露面。  
+5. 过期时间不合理：Max-Age设为过长（如10年）或使用Session Cookie却未绑定用户主动登出逻辑，增加持久化会话被滥用风险。  
+
+四、防御措施与实践建议  
+1. 所有生产环境Cookie必须设置Secure属性，开发环境若无HTTPS则禁用Cookie或启用本地自签名证书模拟。  
+2. 敏感Cookie（如sessionid、auth_token）强制启用HttpOnly，静态资源Cookie（如偏好设置）可视风险酌情放宽。  
+3. 默认采用SameSite=Lax，仅对明确需要跨站提交的表单或API（如OAuth回调）使用SameSite=None+Secure组合。  
+4. 避免通配Domain，精确指定Domain=example.com；子域间需共享时，限定为必需子域（如Domain=api.example.com）。  
+5. 设置合理Max-Age（如30分钟短期会话）并配合服务端短时效校验；长期登录应采用Refresh Token机制而非延长主Cookie有效期。  
+6. 使用Content-Security-Policy: script-src 'self'防XSS，与HttpOnly形成纵深防御；定期扫描响应头验证所有Cookie属性合规性。

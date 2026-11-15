@@ -1,0 +1,28 @@
+CTF PWN基础  
+一、基本概念  
+1. PWN是CTF中以二进制程序漏洞利用为核心的赛题类型，目标是通过操控程序执行流获取shell或读取flag。  
+2. 题目通常提供编译后的Linux ELF可执行文件、libc版本及运行环境描述（如是否开启ASLR、NX、Stack Canary等）。  
+3. 参赛者需逆向分析程序逻辑，定位内存安全缺陷，构造输入触发漏洞并完成控制流劫持。  
+4. 常见输入方式包括标准输入、socket连接或文件读取，输出常通过stdout或网络回显验证利用效果。  
+
+二、原理与关键机制  
+1. 程序栈帧结构决定局部变量、返回地址、调用者寄存器保存位置，是栈溢出利用的基础依据。  
+2. 函数调用约定（如System V ABI）规定参数传递顺序、寄存器使用规则和栈清理责任，影响ROP链构造。  
+3. GOT（全局偏移表）与PLT（过程链接表）协同实现延迟绑定，攻击者可覆盖GOT项劫持函数调用目标。  
+4. libc基址泄露是绕过ASLR的关键前提，常通过printf等函数输出未初始化栈值或GOT地址实现。  
+5. ROP技术通过串联已存在的指令片段（gadget）构建任意逻辑，规避NX保护下的shellcode执行限制。  
+
+三、典型类型与常见问题  
+1. 栈溢出：缓冲区未校验输入长度，导致返回地址被覆盖，最基础但需结合其他机制绕过防护。  
+2. 堆利用：基于glibc malloc机制，涉及fastbin、unsorted bin等管理结构误用，如UAF、double free。  
+3. 格式化字符串漏洞：printf类函数直接使用用户输入作格式串，可读写任意地址，用于信息泄露与got覆写。  
+4. 整数溢出：在内存分配、数组索引或循环边界计算中引发越界访问，常作为堆/栈漏洞的前置条件。  
+5. ret2libc：不依赖shellcode，通过覆盖返回地址跳转至libc中system函数，并布置"/bin/sh"参数。  
+
+四、防御措施与实践建议  
+1. 编译时启用全保护：-fstack-protector-strong、-z noexecstack、-z relro、-z now及-fPIE -pie。  
+2. 服务端应禁用core dump，限制进程资源（ulimit），并以非root低权限用户运行二进制程序。  
+3. 输入处理必须严格校验长度与内容，避免将用户数据直接传入printf、strcpy、sprintf等危险函数。  
+4. 关键指针变量声明为volatile或使用编译器内置函数（如__builtin_object_size）辅助边界检查。  
+5. 开发阶段启用AddressSanitizer（ASan）和UndefinedBehaviorSanitizer（UBSan）进行动态检测。  
+6. 对于CTF学习者，应优先掌握pwntools框架基础用法、gdb-peda/pwndbg调试技巧及libc数据库检索方法。

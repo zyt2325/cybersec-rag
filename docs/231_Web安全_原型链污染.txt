@@ -1,0 +1,29 @@
+原型链污染
+
+一、基本概念  
+1. 原型链污染是一种JavaScript运行时漏洞，攻击者通过恶意输入篡改对象原型（如Object.prototype）的属性。  
+2. 该漏洞不依赖服务端代码执行，仅需存在不安全的对象合并、克隆或递归赋值逻辑即可触发。  
+3. 污染影响全局所有基于Object创建的对象，导致任意属性被注入、覆盖或删除。  
+4. 常见于Node.js后端框架、前端序列化库及配置解析模块中，尤其在处理用户可控JSON数据时高发。  
+
+二、原理与关键机制  
+1. JavaScript中所有对象继承自Object.prototype，其属性可被所有实例读取和写入（若未被冻结）。  
+2. 当使用浅/深拷贝函数（如lodash.merge、JSON.parse后递归赋值）处理用户输入时，若未校验键名，__proto__或constructor等特殊键可能被误作普通属性处理。  
+3. 攻击者构造形如{"__proto__":{"admin":true}}的输入，使目标对象的原型上新增admin属性，后续任意对象访问.admin均返回true。  
+4. 污染可跨作用域生效：一旦Object.prototype被修改，同一JS执行上下文内所有后续创建对象均继承该污染。  
+5. V8引擎中，原型链查找机制会沿__proto__向上遍历，污染属性优先级低于自有属性但高于其他原型属性。  
+
+三、典型类型与常见问题  
+1. 键名绕过型：利用__proto__、constructor、prototype等不同书写变体（如["__proto__"]、["constructor"]["prototype"]）规避基础过滤。  
+2. 多层嵌套污染：通过{"a":{"__proto__":{"x":1}}}实现深层原型属性注入，常用于绕过单层键名校验。  
+3. 属性覆盖型：污染toString、valueOf等内置方法，干扰类型转换逻辑，引发逻辑错误或信息泄露。  
+4. 配置劫持型：污染日志级别、认证开关等配置属性，导致权限提升或敏感操作绕过。  
+5. 框架特有向量：Express中间件body-parser默认解析JSON时未过滤原型键；Nunjucks模板引擎中污染可影响沙箱行为。  
+
+四、防御措施与实践建议  
+1. 使用Object.freeze(Object.prototype)在应用启动时冻结原型，阻止运行时修改（注意兼容性影响）。  
+2. 替换不安全的合并工具：禁用lodash.merge，改用lodash.assignInWith配合白名单校验，或采用structuredClone（Node.js 17+）。  
+3. 输入预处理：解析JSON后立即移除__proto__、constructor、prototype等危险键名，推荐使用safe-regex或正则白名单匹配键名。  
+4. 启用严格模式并配置ESLint规则：启用no-proto、no-prototype-builtins，并添加@typescript-eslint/no-explicit-any约束类型滥用。  
+5. 服务端验证必须独立于客户端：禁止信任前端传入的“is_admin”等字段，所有权限判断须基于服务端可信状态重算。  
+6. 在CI/CD中集成Snyk或npm audit，定期扫描依赖中已知受污染影响的版本（如lodash <4.17.21、hoek <5.0.3）。

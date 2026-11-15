@@ -1,0 +1,29 @@
+ROP链构造原理  
+一、基本概念  
+1. ROP（Return-Oriented Programming）是一种绕过DEP/NX保护的代码复用攻击技术。  
+2. ROP链由一系列以ret指令结尾的短小代码片段（gadget）串联构成，利用栈控制流劫持执行。  
+3. 每个gadget通常位于可执行内存中（如libc、加载模块），其长度一般为数条指令，末尾必须是ret或等效返回指令。  
+4. 构造ROP链的前提是获取目标进程的内存布局信息（如基址偏移），常依赖信息泄露漏洞辅助定位。  
+5. ROP本身不注入新代码，而是重排现有合法指令序列，实现任意逻辑（如调用system、mprotect等系统函数）。  
+
+二、原理与关键机制  
+1. 利用栈溢出或UAF漏洞覆盖返回地址，将控制流转至第一个gadget起始地址。  
+2. 每个gadget执行完毕后通过ret指令弹出栈顶地址作为下一条指令地址，形成“接力式”执行流。  
+3. 栈上需精心布置参数、寄存器值及中间跳转地址，确保gadget间数据传递正确（如pop rdi; ret用于设置rdi寄存器）。  
+4. 多级ROP链常需借助stack pivoting（如xchg rsp, rax; ret）切换至可控栈空间以突破栈空间限制。  
+5. 通用gadget（如pop rax; pop rdx; ret）支持灵活寄存器赋值，是构建复杂链的基础构件。  
+
+三、典型类型与常见问题  
+1. 单级ROP链：仅调用一次系统函数（如execve），适用于简单提权场景，但受限于栈深度与可用gadget。  
+2. 多级ROP链：先调用mprotect或VirtualProtect修改内存页权限，再执行shellcode，绕过DEP更彻底。  
+3. 调用约定适配问题：x86-64下需按System V ABI准备rdi/rsi/rdx/r10等寄存器，易因寄存器污染导致崩溃。  
+4. 地址随机化干扰：ASLR使gadget地址不可预知，需配合信息泄露（如libc地址泄漏）动态计算偏移。  
+5. gadget搜索受限：现代编译器优化（如CFI、stack canary）及代码段只读属性显著减少可用gadget数量。  
+
+四、防御措施与实践建议  
+1. 启用并强化ASLR（包括内核、库、堆、栈全地址随机化），增加gadget定位难度。  
+2. 部署控制流完整性（CFI）机制，如GCC的-fcf-protection=full或Clang的-CFI，阻止非法ret目标跳转。  
+3. 使用编译器插桩（如-fstack-protector-strong）与运行时检测（如libsafe）识别栈异常覆盖行为。  
+4. 采用细粒度内存保护：对代码段严格设为只读可执行（W^X），禁用mmap(MAP_ANONYMOUS|MAP_GROWSDOWN)等危险调用。  
+5. 在开发阶段启用-fPIE -pie编译选项，强制位置无关可执行文件，提升ASLR有效性。  
+6. 对高危函数（如read、memcpy）实施输入长度校验与边界检查，从源头减少栈溢出触发条件。

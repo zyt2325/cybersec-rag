@@ -1,0 +1,28 @@
+PowerShell攻击与防御  
+一、基本概念  
+1. PowerShell是Windows内置的基于.NET的命令行外壳与脚本语言，具备深度系统访问能力。  
+2. 其设计目标为系统管理自动化，但高权限执行环境与丰富API使其成为攻击者常用载荷执行平台。  
+3. 默认启用且无独立进程隔离机制，常被绕过传统AV/EDR检测，属于“合法工具滥用”典型场景。  
+4. 支持远程会话、模块导入、内存加载及反序列化等高级功能，显著扩大攻击面。  
+
+二、原理与关键机制  
+1. 所有PowerShell命令均通过System.Management.Automation.dll解析执行，运行于宿主进程（如powershell.exe、wsmprovhost.exe）。  
+2. 执行策略（ExecutionPolicy）仅控制脚本签名验证，不阻止交互式命令或内存中代码执行。  
+3. Constrained Language Mode通过限制反射、动态代码生成等高危操作实现沙箱化，但可被绕过。  
+4. AMSI（Antimalware Scan Interface）在脚本解析阶段向防病毒软件提供内容扫描接口，但存在Hook绕过与延迟调用漏洞。  
+5. PowerShell v5+引入Script Block Logging与Module Logging，记录完整命令文本，但默认未启用且日志易被清除。  
+
+三、典型类型与常见问题  
+1. 内存注入：将恶意代码加载至PowerShell进程内存中执行，规避磁盘文件落地检测。  
+2. 反序列化攻击：利用PowerShell对NetDataContractSerializer等不安全反序列化器的支持执行任意代码。  
+3. 隐蔽信道：通过DNS查询、HTTP头字段或WMI事件订阅等方式外传数据，绕过网络流量监控。  
+4. 模块伪装：伪造合法模块签名或劫持Import-Module路径，加载恶意二进制或脚本。  
+5. 无文件持久化：利用注册表Run键、WMI事件消费者或计划任务调用PowerShell -EncodedCommand参数维持驻留。  
+
+四、防御措施与实践建议  
+1. 启用并配置严格执行策略（AllSigned或RemoteSigned），配合证书信任链管理确保脚本来源可信。  
+2. 强制开启Script Block Logging与Module Logging，并将日志转发至SIEM系统进行行为基线分析。  
+3. 部署AMSI增强防护，定期更新签名规则，监控绕过AMSI的异常调用模式（如反射调用AmsiScanBuffer）。  
+4. 限制普通用户PowerShell使用权限，通过AppLocker或WDAC策略禁止非授权PowerShell宿主进程启动。  
+5. 在终端侧禁用Constrained Language Mode的降级路径（如通过$ExecutionContext.SessionState.LanguageMode设置），防止沙箱逃逸。  
+6. 对PowerShell调用链实施深度审计，重点关注-EncodedCommand、-ExecutionPolicy Bypass、-NoProfile等高危参数组合。

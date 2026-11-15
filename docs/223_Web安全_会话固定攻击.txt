@@ -1,0 +1,29 @@
+会话固定攻击
+
+一、基本概念  
+1. 会话固定攻击是一种利用合法会话标识（Session ID）被预先设定并复用，从而劫持用户认证会话的Web安全漏洞。  
+2. 攻击者不需破解密码或窃取凭证，而是诱使用户在已知Session ID下完成登录，实现身份冒用。  
+3. 该漏洞本质源于服务器未在用户成功认证后强制更新会话标识，违反OWASP会话管理安全原则。  
+4. 常见于未正确实现会话生命周期管理的PHP、Java Servlet及老旧ASP.NET应用中。  
+
+二、原理与关键机制  
+1. 攻击者首先获取一个有效但未认证的Session ID（如通过访问登录页生成），并将其固化为攻击载体。  
+2. 通过URL参数、HTTP Referer头、恶意链接或中间人注入等方式，将该Session ID传递给目标用户。  
+3. 用户使用该固定ID访问登录页面并提交凭据，服务器验证通过后沿用原ID创建已认证会话。  
+4. 攻击者凭借已知ID即可直接访问用户已认证的会话上下文，绕过身份验证环节。  
+5. 整个过程依赖于服务端对Session ID的“重用容忍”——即未在登录成功时执行会话标识轮换。  
+
+三、典型类型与常见问题  
+1. URL参数型：Session ID以sid=xxx形式暴露在URL中，易被日志、代理缓存或Referer泄露。  
+2. Cookie未标记Secure/HttpOnly：导致Session ID可被JavaScript读取或明文传输，扩大攻击面。  
+3. 登录前后Session ID未变更：服务端未调用session_regenerate_id()（PHP）或request.changeSessionId()（Java EE）等机制。  
+4. 会话超时策略缺失：长期有效的固定ID增加攻击窗口，尤其在共享终端场景风险显著。  
+5. 反向代理或负载均衡器未正确处理会话粘滞，导致Session ID跨节点复用失效检测。  
+
+四、防御措施与实践建议  
+1. 强制会话标识轮换：用户成功登录后必须销毁旧会话并生成全新Session ID，禁用ID继承。  
+2. 避免Session ID通过URL传递：禁用php.ini中的session.use_trans_sid，统一采用安全Cookie传输。  
+3. 设置Cookie属性：启用Secure（仅HTTPS）、HttpOnly（防XSS窃取）、SameSite=Strict/Lax（防CSRF关联）。  
+4. 实施会话绑定：将Session ID与客户端IP、User-Agent哈希值等强关联因子进行校验，异常时终止会话。  
+5. 缩短会话有效期并支持主动注销：设置合理timeout（如15–30分钟无操作），注销时同步清除服务端会话存储。  
+6. 在登录页预生成会话时，若用户未认证则定期失效该ID，防止攻击者长期持有未认证会话标识。

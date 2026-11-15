@@ -1,0 +1,29 @@
+TLS1.3新特性
+
+一、基本概念  
+1. TLS 1.3是IETF于2018年发布的传输层安全协议正式标准（RFC 8446），彻底移除不安全的加密套件与协商机制。  
+2. 协议设计目标为降低握手延迟、提升前向安全性、简化状态机，并强制使用认证加密（AEAD）算法。  
+3. 不再支持RSA密钥传输、静态DH、CBC模式、RC4、SHA-1、MD5及压缩功能，杜绝已知密码学弱点。  
+4. 握手过程从TLS 1.2的2-RTT降至1-RTT（完整握手）或0-RTT（会话恢复），显著减少往返开销。  
+
+二、原理与关键机制  
+1. 基于Diffie-Hellman密钥交换，所有握手消息均经密钥加密（Encrypted Handshake Messages），隐藏ServerHello之后的全部明文。  
+2. 引入PSK（Pre-Shared Key）机制，支持会话复用与外部预共享密钥，实现0-RTT数据传输，但需防范重放攻击。  
+3. 密钥派生采用HKDF替代PRF，分阶段生成early_traffic_secret、handshake_traffic_secret和master_secret，增强密钥隔离性。  
+4. ServerHello后立即发送EncryptedExtensions、Certificate、CertificateVerify和Finished，消除冗余消息与明文泄露面。  
+5. 所有证书验证由客户端在收到CertificateVerify后执行，服务端不再等待客户端确认即完成密钥计算。  
+
+三、典型类型与常见问题  
+1. 0-RTT模式允许客户端在首次消息中发送应用数据，但该数据不具备前向安全性且易受重放攻击。  
+2. 中间盒兼容性问题：部分网络设备依赖解析明文握手字段（如SNI、ALPN），TLS 1.3加密扩展导致其无法识别或错误拦截。  
+3. 降级攻击防护机制强化：通过ServerHello中的legacy_version字段固定为0x0303，并在Finished验证中绑定协议版本哈希。  
+4. 会话恢复仅通过PSK实现，废弃Session ID与Session Ticket两种旧机制，Ticket加密密钥由服务器本地管理且定期轮换。  
+5. 不支持DSA证书、出口级加密套件及自定义ECC曲线，仅接受X25519、X448、P-256、P-384等标准化曲线。  
+
+四、防御措施与实践建议  
+1. 服务端应禁用TLS 1.2以下协议，优先配置X25519密钥交换与AES-256-GCM或ChaCha20-Poly1305套件。  
+2. 对0-RTT数据实施严格幂等性校验与时间窗口限制，避免敏感操作（如转账、密码修改）启用0-RTT。  
+3. 部署时启用ECH（Encrypted Client Hello）以进一步隐藏SNI，缓解被动监听与SNI阻断风险。  
+4. 定期轮换PSK密钥与Ticket加密密钥，设置合理有效期（建议≤7天），并记录密钥生命周期日志。  
+5. 使用OpenSSL 1.1.1+、BoringSSL或rustls等支持完整TLS 1.3特性的现代库，避免自行实现密钥派生逻辑。  
+6. 在WAF或代理设备上升级固件以支持TLS 1.3解析，或改用支持ECH的透明代理架构，规避中间盒干扰。

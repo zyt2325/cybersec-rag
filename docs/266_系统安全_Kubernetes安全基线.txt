@@ -1,0 +1,28 @@
+Kubernetes安全基线
+
+一、基本概念  
+1. Kubernetes安全基线是一组经验证的最小化安全配置要求，用于降低集群在部署、运行和管理过程中的攻击面。  
+2. 基线覆盖控制平面组件（如kube-apiserver、etcd）、工作节点（kubelet、containerd）、工作负载及网络策略等核心层面。  
+3. 主流基线标准包括CIS Kubernetes Benchmark、NSA/CISA Kubernetes Hardening Guidance及NIST SP 800-190。  
+4. 安全基线非一次性配置，需随Kubernetes版本升级、插件变更及业务需求动态更新与持续验证。  
+
+二、原理与关键机制  
+1. 最小权限原则通过RBAC绑定、ServiceAccount限制及Pod Security Admission策略实现细粒度访问控制。  
+2. etcd数据加密依赖静态加密配置（EncryptionConfiguration）与TLS双向认证，防止未授权读取或篡改集群状态。  
+3. kube-apiserver作为唯一入口，其安全依赖于认证（X509/Token/Webhook）、授权（Node/RBAC/ABAC）与准入控制（Validating/Mutating Webhook）三重机制。  
+4. Pod安全通过Pod Security Standards（Privileged、Baseline、Restricted）分级约束容器能力、特权模式、宿主机挂载等高危行为。  
+
+三、典型类型与常见问题  
+1. 控制平面暴露：kube-apiserver未启用审计日志或监听非本地端口，导致未授权调用与操作追溯困难。  
+2. 凭据管理失当：Secret以明文形式写入YAML、未启用Secret加密，或ServiceAccount Token被过度挂载至Pod。  
+3. 节点配置薄弱：kubelet未禁用匿名访问、未启用--read-only-port=0，且未配置cgroup v2与seccomp默认策略。  
+4. 网络隔离缺失：未启用NetworkPolicy，或仅允许全通规则，使横向移动攻击在Pod间畅通无阻。  
+5. 镜像风险累积：使用latest标签、未扫描基础镜像漏洞、未校验镜像签名（Cosign/Sigstore），引入供应链风险。  
+
+四、防御措施与实践建议  
+1. 强制启用Pod Security Admission并全局设置为Restricted级别，禁止privileged、hostNetwork、hostPath等危险字段。  
+2. 对etcd启用静态加密，密钥轮换周期不超过90天；所有组件间通信强制TLS 1.2+，禁用弱密码套件。  
+3. 使用专用ServiceAccount替代default，为每个应用绑定最小RBAC角色，禁用cluster-admin泛权限。  
+4. 部署Falco或eBPF监控工具实时检测异常进程、文件访问与网络连接，结合Open Policy Agent（OPA）实施动态策略验证。  
+5. 在CI/CD流水线中集成Trivy或Snyk扫描镜像，签署并验证镜像签名，拒绝未签名或含高危CVE的镜像部署。  
+6. 定期执行CIS Benchmark自动化检查（如kube-bench），生成合规报告并关联告警系统，闭环修复偏差项。

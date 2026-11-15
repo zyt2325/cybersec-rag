@@ -1,0 +1,30 @@
+Windows账户与权限管理
+
+一、基本概念  
+1. Windows账户分为本地账户和域账户，分别由本地安全机构（LSA）和活动目录（AD）管理。  
+2. 权限指用户或组对系统资源执行特定操作的授权能力，如读取文件、启动服务等。  
+3. 用户权限分配通过用户权利指派（User Rights Assignment）实现，独立于文件系统权限。  
+4. 安全标识符（SID）是账户唯一身份标识，不可重用，删除后重建账户会生成新SID。  
+5. 内置账户如SYSTEM、Local Service、Network Service具有预设最小特权集，用于服务运行上下文。  
+
+二、原理与关键机制  
+1. 访问令牌（Access Token）在用户登录时由LSASS进程创建，包含SID、组成员关系及特权列表。  
+2. Windows采用自主访问控制（DAC）模型，每个可保护对象拥有DACL，定义允许/拒绝的访问控制项（ACE）。  
+3. 特权（Privilege）是系统级操作权限，如SeDebugPrivilege可调试任意进程，需显式启用才生效。  
+4. 用户账户控制（UAC）通过虚拟化和令牌拆分实现标准用户权限隔离，管理员登录默认获标准令牌。  
+5. SID历史（SID History）机制允许迁移域账户时保留旧域组成员资格，但可能被滥用提升权限。  
+
+三、典型类型与常见问题  
+1. Administrator账户默认禁用且无密码策略约束，启用后若弱口令易成横向移动入口。  
+2. Guest账户虽默认禁用，但若启用且未移除Users组权限，可能绕过登录限制访问共享资源。  
+3. 服务账户若使用高权限域账户且密码长期不变，易成为Kerberoasting攻击目标。  
+4. 本地管理员组成员过多导致权限蔓延，单机失陷即引发横向渗透风险。  
+5. 文件或注册表DACL配置错误，如Everyone或Authenticated Users被赋予Full Control，造成敏感信息泄露。  
+
+四、防御措施与实践建议  
+1. 遵循最小权限原则：普通用户不加入本地管理员组，服务账户使用专用低权限域账户。  
+2. 启用并合理配置UAC，禁止关闭Admin Approval Mode，确保管理员操作始终触发提权确认。  
+3. 定期审计本地组成员（如Administrators、Remote Desktop Users）及关键对象DACL，使用icacls或Get-Acl检测异常。  
+4. 禁用不必要的内置账户（Guest、Administrator），改用带强密码和多因素认证的命名管理员账户。  
+5. 对特权账户实施严格管控：启用PAM（Privileged Access Management）、限制登录工作站、启用审核策略记录敏感操作。  
+6. 使用LAPS（Local Administrator Password Solution）自动轮换本地管理员密码，避免密码复用与明文存储。

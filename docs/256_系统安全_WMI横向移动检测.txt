@@ -1,0 +1,31 @@
+WMI横向移动检测
+
+一、基本概念  
+1. WMI横向移动指攻击者利用Windows管理规范接口在域内主机间建立非交互式远程执行通道。  
+2. 该技术依赖Windows系统默认启用的WMI服务（winmgmt）和DCOM协议，无需额外安装组件。  
+3. 攻击者常将其作为域渗透中继阶段的核心手段，用于绕过传统命令行审计日志。  
+4. 与PsExec等工具不同，WMI横向移动全程通过SMB或HTTP协议封装WQL查询与COM调用完成。  
+5. 其合法用途包括系统监控、补丁分发和配置管理，导致恶意行为易被正常运维流量掩盖。
+
+二、原理与关键机制  
+1. 攻击者通过RPC over SMB或WinRM连接目标主机的WMI命名空间（如root\cimv2），获取IWbemServices接口指针。  
+2. 利用IWbemServices::ExecMethod方法调用Win32_Process.Create等类方法实现进程创建，无需写入磁盘。  
+3. 认证过程复用当前会话凭据（如NTLM或Kerberos票据），支持传递式认证，易引发黄金票据滥用。  
+4. 所有操作均经WMI服务进程（svchost.exe -k NetworkService）中转，日志分散于Windows日志、ETW与WMI-Activity日志。  
+5. WMI事件订阅（__EventFilter、__Consumer等）可实现持久化，触发条件包括进程启动、注册表变更等系统事件。
+
+三、典型类型与常见问题  
+1. 即时执行型：直接调用Win32_Process.Create部署无文件载荷，进程父进程常为WmiPrvSE.exe。  
+2. 事件驱动型：部署永久性WMI事件消费者，在特定系统行为（如用户登录）后自动执行恶意代码。  
+3. WMI对象注入：通过修改WMI存储库（%SystemRoot%\System32\wbem\Repository）植入恶意类或实例。  
+4. 日志缺失风险：默认WMI-Activity日志未启用，且WMI日志级别设为“错误”时无法记录成功执行事件。  
+5. 凭据重用隐蔽：使用已窃取的域管理员凭证执行WMI操作，不触发NTLM中继防护机制。  
+6. 时间戳混淆：WMI操作时间可能与实际执行时间存在毫秒级偏差，影响溯源时序分析。
+
+四、防御措施与实践建议  
+1. 启用WMI-Activity日志并设置日志级别为“信息”，配置日志最大尺寸≥200MB并启用自动归档。  
+2. 限制WMI命名空间访问权限，移除非管理员组对root\cimv2等高危命名空间的远程执行权限。  
+3. 部署基于ETW的WMI行为监控规则，重点捕获ExecMethod调用、事件订阅创建及WbemObjectSet操作。  
+4. 禁用非必要WMI提供程序（如WmiPerfInst、WmiPerfProc），减少攻击面并降低性能开销。  
+5. 在域控制器启用Kerberos约束委派（RC4加密禁用+SPN绑定），阻断WMI跨主机票据传递链。  
+6. 将WMI服务运行账户从NetworkService改为专用低权限服务账户，并禁用其本地管理员组成员身份。

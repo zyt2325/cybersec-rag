@@ -1,0 +1,29 @@
+内核Rootkit
+
+一、基本概念  
+1. 内核Rootkit是驻留在操作系统内核空间的恶意软件，通过劫持内核函数或数据结构实现隐蔽控制。  
+2. 其核心目标是获得最高权限（Ring 0），绕过用户态安全机制，长期驻留并隐藏自身及关联进程、文件、网络连接。  
+3. 区别于用户态Rootkit，它不依赖进程注入或DLL劫持，直接修改内核内存或钩子关键系统调用表（如sys_call_table）。  
+4. 需要内核模块签名绕过机制（如禁用Secure Boot、利用已签名漏洞驱动）或具备内核调试权限方可加载。  
+
+二、原理与关键机制  
+1. 利用内核符号导出表（kallsyms）定位关键函数地址，如do_fork、sys_open、tcp_v4_connect等。  
+2. 通过修改IDT（中断描述符表）或SSDT（系统服务描述符表）实现系统调用劫持，拦截并篡改返回结果。  
+3. 采用inline hook或ftrace机制重定向函数执行流，在不触发页保护异常前提下替换函数入口字节。  
+4. 利用内核对象（如task_struct、dentry、inode）遍历链表时动态删除节点指针，实现进程/文件/模块隐藏。  
+5. 借助Kprobe或eBPF等内核调试接口动态植入监控逻辑，但需规避KASLR和SMAP防护机制。  
+
+三、典型类型与常见问题  
+1. LKM型（Loadable Kernel Module）：以.ko形式加载，易被lsmod检测，但兼容性高、开发门槛较低。  
+2. Inline型：直接覆写内核函数机器码，隐蔽性强，但易因内核版本更新导致崩溃或校验失败。  
+3. Firmware级Rootkit：驻留于UEFI固件或网卡ROM中，可重写内核内存，启动早期即生效，传统杀软无法扫描。  
+4. 常见问题包括内核Oops、系统不稳定、KASLR绕过失败、模块签名验证拒绝加载、与安全模块（如SELinux）冲突。  
+5. 现代Linux内核启用CONFIG_MODULE_SIG_FORCE后，未签名模块默认禁止加载，显著提升部署门槛。  
+
+四、防御措施与实践建议  
+1. 启用Secure Boot并配置可信UEFI密钥，阻止未签名内核模块及引导组件加载。  
+2. 使用内核完整性度量（IMA/EVM）持续校验关键内核内存区域与模块哈希值，发现篡改即告警或阻断。  
+3. 部署基于硬件的内存保护技术（如Intel SME/AMD SME），加密内核内存页，防止DMA攻击读取敏感结构。  
+4. 在虚拟化环境中启用Hypervisor级监控（如Intel VT-d DMA重映射、KVM introspection），隔离并审计内核行为。  
+5. 定期核查/proc/kallsyms、/sys/module/目录及dmesg日志，比对内核符号地址异常偏移或未知模块注册痕迹。  
+6. 采用eBPF程序在内核态实施运行时检测，如监控sys_enter/sys_exit事件序列异常、task_struct状态非法跳变。

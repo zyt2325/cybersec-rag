@@ -1,0 +1,30 @@
+802.1X认证
+
+一、基本概念  
+1. 802.1X是IEEE制定的基于端口的网络访问控制（PNAC）标准，用于在接入层对用户或设备进行身份鉴别。  
+2. 认证过程涉及三个实体：请求者（客户端）、认证者（如交换机或无线AP）、认证服务器（通常为RADIUS服务器）。  
+3. 它不定义具体认证协议，而是提供框架，支持EAP（Extensible Authentication Protocol）作为底层认证承载机制。  
+4. 主要部署于有线以太网和WPA/WPA2/WPA3企业级Wi-Fi环境中，实现动态密钥分发与会话级访问控制。  
+5. 与传统MAC地址过滤或静态VLAN划分不同，802.1X实现用户级策略绑定，支持单用户多设备隔离。
+
+二、原理与关键机制  
+1. 认证前，认证者将端口置于未授权状态，仅允许EAPOL帧和DHCP/ARP等必要协议通过。  
+2. 请求者发起EAP-start或响应EAP-Request/Identity后，认证者将EAP报文封装为RADIUS Access-Request转发至认证服务器。  
+3. 认证服务器验证凭据（如用户名/密码、证书、Token），返回Access-Accept或Access-Reject，并可携带VLAN ID、ACL、QoS策略等属性。  
+4. 认证成功后，认证者将端口切换至授权状态，启用正常数据转发，并触发动态密钥协商（如WPA四次握手）。  
+5. 支持会话生命周期管理：包括重认证定时器、EAP-Key-Name分发、以及异常下线时的端口自动重置。
+
+三、典型类型与常见问题  
+1. 常见EAP子类型包括EAP-TLS（证书双向认证）、PEAP-MSCHAPv2（隧道内密码认证）、EAP-TTLS（兼容多种内层认证）。  
+2. 配置错误易导致环路：如交换机未启用dot1x系统级功能、端口未配置为access模式或未禁用spanning-tree portfast。  
+3. 证书信任链失效、客户端时间偏差超5分钟、RADIUS共享密钥不一致均会导致EAP-TLS或PEAP认证失败。  
+4. 中间人攻击风险：若未强制验证服务器证书（如PEAP中忽略证书校验），攻击者可伪造RADIUS代理实施凭证窃取。  
+5. 设备兼容性问题：部分IoT终端缺乏EAP栈支持，需依赖MAC认证旁路（MAB），但会削弱安全边界。
+
+四、防御措施与实践建议  
+1. 强制启用EAP-TLS或PEAP-MSCHAPv2并校验服务器全路径证书，禁用EAP-MD5等无加密保护的旧类型。  
+2. RADIUS服务器应部署双因素认证（如RADIUS+TOTP），并限制源IP白名单、启用消息完整性校验（Message-Authenticator属性）。  
+3. 交换机侧启用dot1x authentication failure VLAN与guest VLAN，隔离认证失败流量，避免泛洪攻击影响主网络。  
+4. 定期轮换RADIUS共享密钥与EAP-TLS私钥，使用至少2048位RSA或P-256椭圆曲线证书，禁用SSLv3/TLS 1.0。  
+5. 在核心交换机部署802.1X监控日志，关联RADIUS Accounting记录与NetFlow数据，识别异常重认证频次或漫游行为。  
+6. 对哑终端采用MAB+DHCP指纹识别+动态ACL组合策略，而非完全禁用802.1X，维持基础准入控制粒度。

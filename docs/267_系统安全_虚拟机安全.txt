@@ -1,0 +1,30 @@
+虚拟机安全
+
+一、基本概念  
+1. 虚拟机安全指保障虚拟化环境中客户操作系统（Guest OS）、虚拟机监控器（Hypervisor）及底层宿主机（Host）的机密性、完整性与可用性。  
+2. Hypervisor是核心信任基，分为Type 1（裸金属，如VMware ESXi、Xen）和Type 2（宿主型，如VirtualBox、VMware Workstation）。  
+3. 虚拟机逃逸（VM Escape）指攻击者突破单个虚拟机隔离边界，获取Hypervisor或宿主机控制权的行为。  
+4. 虚拟机间侧信道攻击利用共享物理资源（如CPU缓存、内存带宽）推断相邻虚拟机敏感信息。  
+5. 虚拟机镜像安全关注.qcow2、.vmdk等格式镜像的完整性校验、恶意代码植入与配置漏洞风险。
+
+二、原理与关键机制  
+1. 硬件辅助虚拟化（Intel VT-x/AMD-V）通过CPU特权级扩展实现高效指令截获与敏感操作重定向。  
+2. 内存虚拟化依赖EPT（Extended Page Tables）或NPT（Nested Page Tables）实现客户物理地址到宿主机物理地址的两级映射。  
+3. I/O虚拟化采用全虚拟化（QEMU模拟）、半虚拟化（virtio驱动）或直通（PCIe Passthrough）三种模式，安全边界各不相同。  
+4. VMCS（Virtual Machine Control Structure）在Intel VT-x中存储虚拟机状态与控制字段，其篡改可导致执行流劫持。  
+5. 同构虚拟化环境中的内存去重（如KSM）虽节省资源，但可能引入跨VM内存泄露通道。
+
+三、典型类型与常见问题  
+1. Type 2 Hypervisor因运行于通用OS之上，易受宿主系统漏洞（如内核提权）波及，攻击面更大。  
+2. 虚拟机快照文件（.vmsn/.sav）常含内存明文，若未加密且权限宽松，可被提取密钥或会话令牌。  
+3. 虚拟网卡混杂模式配置不当或虚拟交换机ACL缺失，可能导致虚拟网络流量被同宿主机其他VM嗅探。  
+4. 过时的VMware Tools或VirtualBox Guest Additions存在本地提权漏洞，可被用于逃逸准备阶段。  
+5. 云环境中多租户虚拟机共用物理CPU，Spectre/Meltdown类微架构漏洞可被用于跨VM推测执行攻击。
+
+四、防御措施与实践建议  
+1. 启用Hypervisor级内存加密（如AMD SEV、Intel TDX）保护运行时内存，防止冷启动或DMA攻击。  
+2. 禁用非必要虚拟硬件（如软盘控制器、串口、USB重定向），减少攻击面并关闭对应Hypervisor仿真模块。  
+3. 对虚拟机镜像实施签名验证与哈希比对，部署前扫描qcow2镜像内部文件系统中的后门程序。  
+4. 配置虚拟交换机端口安全策略，启用MAC绑定、DHCP Snooping与ARP Inspection，阻断虚拟网络层欺骗。  
+5. 定期更新Hypervisor固件与管理工具，禁用远程管理接口（如vSphere Web Client）的默认账户与弱密码策略。  
+6. 在开发测试环境避免使用快照替代备份，生产环境快照文件须启用AES-256加密并限制访问权限为root-only。

@@ -1,0 +1,30 @@
+Linux日志审计
+
+一、基本概念  
+1. 日志审计是通过持续采集、分析和关联Linux系统日志，识别异常行为与安全事件的过程。  
+2. 审计对象包括系统日志（/var/log/messages）、认证日志（/var/log/secure）、内核日志（dmesg/journalctl）及应用日志。  
+3. Linux审计子系统（auditd）是内核级审计框架，独立于syslog，提供细粒度的系统调用级监控能力。  
+4. 审计规则由auditctl动态配置，持久化规则保存在/etc/audit/rules.d/目录下，以*.rules为扩展名。  
+5. 审计日志默认存于/var/log/audit/audit.log，采用二进制格式记录，需使用ausearch/aureport工具解析。
+
+二、原理与关键机制  
+1. auditd守护进程接收内核审计消息，经序列化后写入磁盘日志，并支持远程日志转发（如rsyslog或syslog-ng中继）。  
+2. 内核通过audit_filter_type和audit_log_set_contid等接口将系统调用、文件访问、权限变更等事件注入审计队列。  
+3. 审计规则支持基于UID/GID、PID、路径、系统调用号（syscall）、capabilites等多维度条件匹配与过滤。  
+4. 审计上下文（audit context）为每个进程维护唯一标识，确保跨fork/exec的事件链可追溯。  
+5. 审计日志具备完整性保护机制：可通过auditctl -e 2启用不可修改模式，阻止运行时日志篡改或守护进程终止。
+
+三、典型类型与常见问题  
+1. 认证失败暴增（如pam_faillock触发的大量authpriv日志）可能预示暴力破解攻击。  
+2. /etc/shadow或/etc/passwd被非root用户读取、/etc/sudoers权限异常变更属于高危审计事件。  
+3. audit.log体积突增且含大量execve调用，尤其伴随非常规路径（如/tmp/.X11-unix/）可能指示恶意代码执行。  
+4. 日志时间戳不一致、系统时钟频繁跳变或journalctl显示“Clock drift detected”易导致事件时序错乱。  
+5. auditd服务未启用、日志轮转策略缺失（logrotate未配置）或磁盘满导致日志截断，造成审计盲区。
+
+四、防御措施与实践建议  
+1. 启用auditd并配置最小必要规则集，禁用冗余规则（如-a always,exit -F arch=b64 -S openat），避免性能损耗。  
+2. 将audit.log与系统日志分离存储至专用分区，设置磁盘配额（如logrotate的maxsize）并启用日志压缩归档。  
+3. 部署集中式日志平台（如ELK或Splunk），对/var/log/secure、/var/log/audit/audit.log实施实时解析与告警。  
+4. 定期校验审计日志完整性：使用aureport --key integrity生成校验摘要，比对SHA256哈希值是否被篡改。  
+5. 对特权操作强制双因素认证，并在sudoers中启用requiretty与log_input/log_output，补充auditd未覆盖的行为链。  
+6. 建立日志保留策略：系统日志至少保留90天，审计日志按等保要求保留180天以上，加密归档至离线介质。

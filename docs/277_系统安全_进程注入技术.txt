@@ -1,0 +1,28 @@
+进程注入技术
+
+一、基本概念  
+1. 进程注入是一种在目标进程地址空间中执行恶意或非授权代码的技术，常用于绕过安全检测与权限隔离。  
+2. 它不依赖于文件落地，主要通过内存操作实现代码执行，属于无文件攻击（Fileless Attack）的重要手段。  
+3. 注入行为本身不改变目标进程的合法功能逻辑，但可劫持其执行流、窃取凭证或建立持久化通信通道。  
+4. 常见载体包括explorer.exe、svchost.exe等高权限、长生命周期的系统进程。  
+
+二、原理与关键机制  
+1. 利用Windows API（如OpenProcess、VirtualAllocEx、WriteProcessMemory、CreateRemoteThread）完成内存分配、代码写入与线程创建。  
+2. 核心依赖进程间内存映射与线程上下文控制，需具备目标进程的PROCESS_VM_OPERATION与PROCESS_CREATE_THREAD等访问权限。  
+3. 注入代码通常以Shellcode形式存在，经编码或加密规避静态特征检测，运行时动态解密并调用系统API。  
+4. 现代变种常结合APC注入、SetThreadContext、远程线程挂起-修改-恢复等机制绕过ETW与AMSI监控。  
+
+三、典型类型与常见问题  
+1. 远程线程注入：最基础方式，通过CreateRemoteThread启动新线程执行注入代码，易被EDR基于线程创建行为告警。  
+2. APC注入：向目标线程APC队列插入用户态Shellcode，在线程进入可唤醒状态时执行，隐蔽性优于远程线程。  
+3. DLL反射注入：将DLL加载器与目标DLL一同注入，由内存中自解析加载，避免调用LoadLibrary，规避DLL加载日志。  
+4. 早期绑定注入（Early Bird）：在进程初始化阶段（如LdrpInitializeProcess前）注入，干扰PEB链表构建，逃逸部分AV钩子。  
+5. 问题在于多数注入需提升权限或利用漏洞获取句柄，且频繁触发内存保护机制（如DEP、CFG、HVCI）异常。  
+
+四、防御措施与实践建议  
+1. 启用内核级防护如Hypervisor-protected Code Integrity（HVCI），阻止未签名驱动与内核模块加载。  
+2. 配置Windows Defender Exploit Guard（EDR）的“代码完整性策略”，限制特定进程加载非受信DLL。  
+3. 监控异常进程行为：如低权限进程对高权限进程调用OpenProcess+WRITE/CREATE权限、频繁VirtualAllocEx申请可执行内存。  
+4. 启用ETW事件日志（Microsoft-Windows-Threat-Intelligence）捕获CreateRemoteThread、QueueUserAPC等敏感API调用。  
+5. 实施最小权限原则，避免普通用户账户拥有SeDebugPrivilege权限，限制服务进程以LocalSystem外身份运行。  
+6. 对关键业务进程启用Control Flow Guard（CFG）与Shadow Stack（如Intel CET），阻断非预期控制流跳转。

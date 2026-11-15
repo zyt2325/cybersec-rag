@@ -1,0 +1,29 @@
+Linux内核漏洞利用
+
+一、基本概念  
+1. Linux内核漏洞利用指攻击者通过触发内核中未修复的缺陷，突破用户态与内核态隔离，获取高权限执行能力。  
+2. 内核态运行在Ring 0特权级，可直接访问硬件和全部内存，一旦被劫持将导致系统完全失控。  
+3. 利用目标包括提权（如从普通用户到root）、信息泄露（如内核地址、物理内存布局）、拒绝服务或持久化驻留。  
+4. 与用户态漏洞利用相比，内核利用需绕过KASLR、SMAP、SMEP、KPTI等硬性防护机制，技术门槛更高。  
+
+二、原理与关键机制  
+1. 内核漏洞利用依赖于可控的数据流与控制流错位，例如UAF导致释放后重用内核对象，或堆溢出覆盖相邻结构体字段。  
+2. 内核地址空间布局随机化（KASLR）迫使攻击者先泄露内核基址，常借助/proc/kallsyms读取或信息泄露漏洞实现。  
+3. SMEP（Supervisor Mode Execution Prevention）阻止内核执行用户态代码，需配合ROP或ret2usr技术绕过。  
+4. SMAP（Supervisor Mode Access Prevention）禁止内核访问用户态内存，需切换CR3寄存器或利用内核页表映射规避。  
+5. KPTI（Kernel Page-Table Isolation）分离用户/内核页表，增大信息泄露难度，但不阻断已获得内核执行权的后续操作。  
+
+三、典型类型与常见问题  
+1. Use-After-Free：释放后继续使用内核对象指针，可劫持函数指针（如file_operations、inet_protos）实现跳转。  
+2. 堆溢出：如slab分配器中相邻对象布局可控时，覆写邻近结构体的函数指针或长度字段引发任意代码执行。  
+3. 竞态条件：多线程并发访问未加锁内核资源（如procfs接口），导致状态不一致，可用于UAF或条件触发提权路径。  
+4. 整数溢出：在kmalloc参数计算中触发，造成分配缓冲区过小，后续拷贝导致越界写入内核堆。  
+5. 空指针解引用：虽常致panic，但在特定配置（如CONFIG_DEBUG_NULL_POINTER=n）下可能被构造为可控偏移读写。  
+
+四、防御措施与实践建议  
+1. 启用并验证KASLR、SMEP、SMAP、KPTI、STACKPROTECTOR_STRONG等编译期与运行期防护选项。  
+2. 采用grsecurity/PaX补丁集或Linux 5.15+主线内核的lockdown mode限制运行时内核修改行为。  
+3. 最小化内核模块加载，禁用不必要的驱动（如firewire、usb-storage），减少攻击面。  
+4. 部署eBPF-based运行时检测（如Tracee、Falco），监控异常系统调用序列与内核对象生命周期异常。  
+5. 定期更新内核版本，优先采用LTS分支并及时应用安全补丁，关注CVE公告中CVSS评分≥7.0的高危项。  
+6. 开发内核模块时强制启用__user标记、access_ok()校验、copy_from_user/copy_to_user边界检查，避免裸指针操作。

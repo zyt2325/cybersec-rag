@@ -1,0 +1,28 @@
+VLAN安全
+
+一、基本概念  
+1. VLAN（虚拟局域网）是通过交换机逻辑划分广播域的技术，同一VLAN内设备可二层互通，不同VLAN默认隔离。  
+2. VLAN标识使用12位IEEE 802.1Q标签（Tag），支持4096个ID（0和4095为保留值，可用范围1–4094）。  
+3. 原生VLAN（Native VLAN）指未打标帧默认归属的VLAN，Trunk端口收发该VLAN流量时不添加802.1Q标签。  
+4. VLAN间通信必须经三层设备（如路由器或三层交换机）路由，依赖IP子网与ACL策略实现访问控制。  
+
+二、原理与关键机制  
+1. 802.1Q封装在以太网帧头后插入4字节标签字段，含TPID（0x8100）、PCP、DEI和VID，决定帧转发路径。  
+2. 交换机依据MAC地址表与VLAN成员表联合查表：先判目标MAC所属端口，再验证该端口是否属于对应VLAN。  
+3. Trunk链路允许多VLAN流量复用，需两端协商一致的允许VLAN列表（allowed VLAN list）及原生VLAN配置。  
+4. PVLAN（私有VLAN）通过主VLAN与辅助VLAN（隔离型/团体型）细分端口通信权限，限制同一子网内横向访问。  
+
+三、典型类型与常见问题  
+1. VLAN跳跃攻击利用双标签帧（Double Tagging）欺骗：攻击帧携带两个802.1Q标签，外层针对原生VLAN，内层指向目标VLAN。  
+2. 交换机泛洪溢出（CAM表溢出）可导致未知单播帧被广播至所有端口，绕过VLAN隔离，暴露跨VLAN流量。  
+3. 原生VLAN不匹配（如一端设为VLAN 1，另一端为VLAN 10）将造成未打标帧被错误转发，引发跨VLAN信息泄露。  
+4. 动态VLAN分配（如VMPS）若缺乏认证与加密，易受中间人劫持，导致终端被分配至高权限VLAN。  
+5. 默认VLAN（通常为VLAN 1）常承载管理流量，若未显式重映射且开放Telnet/HTTP服务，易成攻击入口。  
+
+四、防御措施与实践建议  
+1. 禁用默认VLAN 1：将所有接入端口移出VLAN 1，管理接口单独划入专用管理VLAN并启用强认证。  
+2. 显式配置Trunk原生VLAN：两端统一设置非业务VLAN（如VLAN 999）为原生VLAN，并禁止其承载用户数据。  
+3. 关闭未使用端口并静态划分VLAN：禁用动态中继协议（DTP），所有Trunk端口手工配置allowed VLAN列表，剔除无关ID。  
+4. 启用端口安全与DHCP Snooping：限制每端口MAC数量，绑定合法IP-MAC-端口关系，阻断伪造DHCP Offer跨VLAN分发。  
+5. 部署PVLAN或VLAN ACL（VACL）：在核心交换机上配置VACL过滤特定VLAN间IP协议，阻止非法ICMP/TCP跨VLAN探测。  
+6. 定期审计VLAN拓扑：使用CDP/LLDP发现协议识别非法设备接入，核查交换机VLAN数据库与端口成员一致性。

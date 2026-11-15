@@ -1,0 +1,28 @@
+蓝牙安全  
+
+一、基本概念  
+1. 蓝牙是一种短距离无线通信技术标准，工作在2.4 GHz ISM频段，支持点对点及多点连接。  
+2. 蓝牙协议栈分为控制器（HCI以下）与主机（HCI以上）两层，安全机制分布在链路层（LE Security Manager）和主机层（Security Manager Protocol）。  
+3. 经典蓝牙（BR/EDR）与低功耗蓝牙（BLE）采用不同安全模型：前者依赖配对与链路密钥，后者基于LE Secure Connections和SM协议。  
+4. 安全目标包括机密性、完整性、身份认证与重放保护，但默认配置常启用弱安全选项以兼顾兼容性与功耗。  
+
+二、原理与关键机制  
+1. 配对是建立信任关系的核心过程，涉及输入输出能力协商（如Just Works、Passkey Entry、Out of Band），直接影响密钥强度。  
+2. 生成的长期密钥（LTK）、身份解析密钥（IRK）和连接签名解析密钥（CSRK）分别用于加密、隐私地址解析和数据签名。  
+3. BLE使用配对绑定（Bonding）持久化存储密钥，后续连接可跳过配对直接加密；经典蓝牙则依赖链路密钥缓存与主从角色协商。  
+4. 地址类型分公有地址（固定MAC）、随机静态地址（重启不变）与随机私有可解析/不可解析地址，后者依赖IRK实现隐私保护。  
+
+三、典型类型与常见问题  
+1. Bluejacking利用非认证的OBEX推送发送未授权消息，不窃取数据但构成骚扰与社会工程入口。  
+2. Bluesnarfing通过未授权访问OBEX对象推送服务，读取联系人、日历等敏感信息，依赖设备开放RFCOMM通道且无配对验证。  
+3. BlueBorne攻击链利用蓝牙协议栈内存越界、状态机错误等漏洞，在未配对状态下远程执行代码，影响Linux、Android、Windows及iOS系统。  
+4. BLE广播帧明文传输，易被嗅探；若未启用私有地址或IRK轮换，可长期追踪设备物理位置。  
+5. 配对时若选择Just Works模式（无用户交互），无法防御中间人攻击（MITM），因缺乏密钥确认机制。  
+
+四、防御措施与实践建议  
+1. 默认禁用蓝牙功能，仅在必要时开启，并设置为不可发现模式（Non-discoverable），缩短攻击面暴露时间。  
+2. 优先选用LE Secure Connections配对（基于ECDH密钥交换），避免使用Legacy Pairing；强制要求Passkey Entry或OOB方式启用MITM保护。  
+3. 移动端与嵌入式设备固件应定期更新，尤其关注BlueZ（Linux）、Broadcom/WCN3990（Android）、Apple BT Stack等组件的安全补丁。  
+4. 应用层需校验蓝牙服务特征权限（如Android的BLUETOOTH_CONNECT），禁止未经用户显式授权的后台扫描与连接。  
+5. 对于高敏场景（如医疗设备、门禁系统），禁用BLE广播中的设备名称与服务UUID，启用连接加密强制策略（Encryption Key Size ≥ 16字节）。  
+6. 网络边界部署蓝牙协议分析器（如Ubertooth、nRF Sniffer），监控异常广播频率、重复连接请求及非预期服务发现行为。

@@ -1,0 +1,29 @@
+容器逃逸原理
+
+一、基本概念  
+1. 容器逃逸指攻击者突破容器运行时隔离边界，获得宿主机操作系统权限的行为。  
+2. 本质是利用容器与宿主机共享内核的特性，通过内核漏洞或配置缺陷实现提权。  
+3. 不同于虚拟机逃逸，容器逃逸不依赖Hypervisor层漏洞，主要作用于Linux命名空间与cgroups机制。  
+4. 逃逸成功后攻击者可读写宿主机文件系统、加载内核模块、操纵其他容器或进程。  
+
+二、原理与关键机制  
+1. Linux命名空间（如PID、NET、MNT）提供逻辑隔离，但未完全阻断内核态资源访问路径。  
+2. cgroups限制资源使用，但某些版本存在控制组路径遍历或挂载点逃逸漏洞（如cgroup v1 release_agent）。  
+3. 宿主机内核漏洞（如Dirty COW、overlayfs UAF、bpf验证器绕过）可被容器内进程触发并利用。  
+4. 特权容器（privileged=true）直接获得全量cap_sys_admin能力，等效于root权限宿主机访问。  
+5. 挂载宿主机敏感路径（如/proc、/sys、/var/run/docker.sock）为逃逸提供内核接口或Docker守护进程操控通道。  
+
+三、典型类型与常见问题  
+1. 命名空间逃逸：通过/proc/[pid]/ns/符号链接切换至宿主机命名空间，绕过PID/UTS隔离。  
+2. cgroup逃逸：向cgroup v1 release_agent写入恶意路径，触发宿主机以root权限执行任意程序。  
+3. 内核模块加载逃逸：在特权容器中利用kexec_load或eBPF验证缺陷加载恶意内核模块。  
+4. Docker socket挂载滥用：容器内调用Docker API创建新容器并挂载宿主机根目录，实现文件系统越权访问。  
+5. overlayfs元数据竞争：利用overlayfs rename操作中的UAF漏洞，在容器内触发宿主机内核内存破坏。  
+
+四、防御措施与实践建议  
+1. 禁用特权容器，仅按最小权限原则授予必要Linux Capabilities（如去掉CAP_SYS_ADMIN）。  
+2. 避免挂载宿主机敏感路径，尤其禁止将/proc、/sys、/var/run/docker.sock映射进容器。  
+3. 升级容器运行时与宿主机内核至已修复已知逃逸漏洞的版本（如runc v1.1.12+、Linux 5.15+）。  
+4. 启用SELinux或AppArmor策略，对容器进程施加强制访问控制，限制其系统调用行为。  
+5. 使用gVisor或Kata Containers等强隔离运行时替代默认runc，增加内核攻击面防护层级。  
+6. 在CI/CD流程中集成容器镜像扫描，检测高危Capabilites、特权配置及已知漏洞组件。

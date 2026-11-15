@@ -1,0 +1,26 @@
+SUID提权原理  
+一、基本概念  
+1. SUID（Set User ID）是Linux文件权限位之一，当可执行文件设置SUID位后，运行时进程有效用户ID（EUID）被设为文件所有者UID。  
+2. 普通用户执行具有SUID权限的程序（如passwd、sudo）时，可临时获得文件所有者（通常是root）的权限级别。  
+3. SUID仅作用于直接执行的二进制文件或脚本解释器（需内核支持），对shell脚本本身通常无效（因内核默认忽略脚本的SUID位）。  
+4. 文件SUID位在ls -l输出中以“s”显示在属主执行位（如-rwsr-xr-x），对应八进制权限值的高位4（如4755）。  
+
+二、原理与关键机制  
+1. 内核在execve()系统调用处理SUID文件时，将进程的EUID设为文件所有者UID，而真实UID（RUID）仍为原用户，形成权限分离。  
+2. 进程权限检查依赖EUID而非RUID，因此SUID程序可访问仅对文件所有者开放的资源（如/etc/shadow、特定设备节点）。  
+3. 若SUID程序存在缺陷（如路径注入、环境变量滥用、缓冲区溢出），攻击者可能劫持其高权限上下文执行任意代码。  
+4. 权限提升依赖EUID持久性：只要进程未显式调用seteuid()降权或execve()新程序覆盖，EUID保持不变。  
+
+三、典型类型与常见问题  
+1. 不安全的system()调用：SUID程序若拼接用户输入构造shell命令，且未清理PATH或IFS，易遭命令注入。  
+2. 脆弱的文件操作：使用open()、fopen()等函数时未指定O_NOFOLLOW或未校验符号链接，导致任意文件覆盖或读取。  
+3. 环境变量污染：SUID程序继承调用者环境变量（如LD_PRELOAD、PATH），若未清空即加载共享库或查找二进制，可被劫持。  
+4. 逻辑缺陷：如程序先以root权限创建临时文件，再降权写入内容，但未设置安全文件权限或使用mkstemp()，引发竞态条件。  
+
+四、防御措施与实践建议  
+1. 最小权限原则：SUID位仅授予绝对必要程序，定期审计find / -perm -4000 -type f 2>/dev/null输出的SUID文件列表。  
+2. 程序开发阶段应显式调用setuid(getuid())或seteuid(getuid())尽早放弃不必要的EUID，仅在关键操作前临时恢复。  
+3. 使用绝对路径调用外部程序，或在调用前清空危险环境变量（如unset LD_PRELOAD PATH；execve("/bin/ls", ...)）。  
+4. 避免在SUID程序中解析用户可控输入构造命令；优先使用execve()替代system()，并严格校验参数。  
+5. 编译时启用栈保护（-fstack-protector）、RELRO和NX位，限制内存破坏类漏洞的利用效果。  
+6. 配置内核参数fs.suid_dumpable=0防止coredump泄露敏感内存，结合SELinux/AppArmor实施细粒度访问控制。

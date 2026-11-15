@@ -1,0 +1,28 @@
+Linux提权思路
+
+一、基本概念  
+1. 提权指低权限用户通过漏洞或配置缺陷获取更高权限（如从普通用户提升至root）的过程。  
+2. Linux提权分为垂直提权（权限层级跃升）和水平提权（同级用户间越权），课程重点聚焦垂直提权。  
+3. 提权不是独立攻击阶段，而是渗透测试中后利用（Post-Exploitation）的关键环节。  
+4. 权限边界由Linux内核强制执行，提权本质是绕过或突破该强制访问控制机制。  
+
+二、原理与关键机制  
+1. Linux权限模型基于用户ID（UID）、组ID（GID）及文件系统权限位（rwx），内核据此判定操作合法性。  
+2. setuid/setgid程序在执行时临时继承文件所有者的UID/GID，若配置不当可被滥用为提权入口。  
+3. 内核模块加载、proc/sys接口、bpf系统调用等特权操作路径存在历史漏洞，可能触发本地提权。  
+4. Capabilities机制将root权限细粒度拆分，但cap_sys_module等能力若被非特权进程持有，仍构成提权风险。  
+
+三、典型类型与常见问题  
+1. 内核漏洞利用：如Dirty COW（CVE-2016-5195）通过竞态条件篡改只读内存映射实现提权。  
+2. 配置错误：sudoers文件中允许无密码执行高危命令（如/bin/bash）、过度开放的NOPASSWD条目。  
+3. 服务/定时任务提权：以root身份运行的脚本引用未加引号的变量或可写路径，导致路径劫持。  
+4. SUID二进制文件滥用：find、nmap、vim等工具若版本老旧且含交互式shell逃逸功能，可被用于提权。  
+5. Docker容器逃逸：当宿主机挂载敏感路径（如/var/run/docker.sock）或启用privileged模式时，容器内进程可提权至宿主。  
+
+四、防御措施与实践建议  
+1. 最小权限原则：禁用不必要的SUID/SGID位，定期使用find / -perm -4000 -type f 2>/dev/null扫描可疑文件。  
+2. 严格管控sudoers：避免ALL=(ALL) NOPASSWD: ALL，应限定命令绝对路径与参数白名单。  
+3. 内核与软件及时更新：启用自动安全更新（如unattended-upgrades），重点关注CVE中CVSS评分≥7.0的本地提权漏洞。  
+4. 容器运行时加固：禁用privileged模式，限制capabilities（如drop CAP_SYS_ADMIN），避免挂载宿主敏感目录。  
+5. 日志审计强化：启用auditd监控execve、setuid、module_load等关键系统调用，配置规则捕获异常提权行为。  
+6. 使用沙箱与命名空间：对高风险服务启用systemd服务单元的RestrictSUIDSGID、NoNewPrivileges等防护选项。

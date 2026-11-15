@@ -1,0 +1,28 @@
+堆溢出原理  
+一、基本概念  
+1. 堆溢出是指程序向动态分配的堆内存区域写入超出其申请大小的数据，破坏相邻内存结构的行为。  
+2. 堆内存由运行时库（如glibc的malloc）管理，具有动态分配/释放、生命周期不确定、布局非连续等特点。  
+3. 与栈溢出不同，堆溢出不直接覆盖返回地址，而是通过篡改元数据（如chunk头）或相邻对象实现控制流劫持。  
+4. 堆溢出漏洞多存在于C/C++等缺乏内存安全机制的语言编写的程序中，常见于图像解析、网络协议处理等场景。  
+
+二、原理与关键机制  
+1. malloc内部将堆划分为多个chunk，每个chunk包含8/16字节的元数据（size字段、prev_inuse等标志位）和用户数据区。  
+2. 当发生溢出时，攻击者可覆写后续chunk的size字段，使free()误判块大小，触发合并逻辑异常。  
+3. 覆盖chunk头部的fd/bk指针（在未启用tcache或fastbin时），可在后续malloc/unlink操作中实现任意地址写入。  
+4. 利用堆块重叠（overlapping chunks）可多次分配同一物理内存，造成UAF或双重释放条件。  
+5. 现代堆管理器（如glibc 2.34+）默认启用tcache，但tcache_entry结构仍含fd指针，溢出可污染该指针实现控制流劫持。  
+
+三、典型类型与常见问题  
+1. 基于off-by-one的堆溢出：仅越界写入1字节，常用于修改相邻chunk size的最低位，绕过边界检查。  
+2. Double-free引发的堆溢出利用：释放后再次释放同一指针，导致tcache链表被篡改，后续malloc返回受控地址。  
+3. Unsorted bin attack：溢出覆写unsorted bin中chunk的bk指针，使malloc在分配时向指定地址写入main_arena地址。  
+4. House of Force：通过溢出修改top chunk size为极大值，使后续malloc返回攻击者指定的任意地址。  
+5. 堆风水（heap feng shui）：通过精心构造分配/释放序列，控制堆布局以提高溢出利用成功率。  
+
+四、防御措施与实践建议  
+1. 启用编译期保护：使用-fstack-protector-strong、-D_FORTIFY_SOURCE=2，并链接带强化的libc（如musl或hardened glibc）。  
+2. 运行时启用ASLR、NX、Heap Canary（如glibc 2.32+的malloc_check）、tcache poisoning检测等内核/库级防护。  
+3. 采用内存安全语言（Rust、Go）重写高危模块；对遗留C代码强制使用安全函数（calloc替代malloc+memset，strncpy替代strcpy）。  
+4. 在堆分配前校验输入长度，对图像解析、协议解析等场景实施严格边界检查与格式验证。  
+5. 使用AddressSanitizer（ASan）进行开发测试，捕获堆外写、use-after-free等内存错误；生产环境可部署HWASan增强检测能力。  
+6. 禁用危险堆调试功能（如MALLOC_CHECK_=3、MALLOC_PERTURB_），避免暴露堆布局信息给攻击者。

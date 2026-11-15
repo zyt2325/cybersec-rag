@@ -1,0 +1,30 @@
+Windows服务与计划任务安全
+
+一、基本概念  
+1. Windows服务是在系统后台持续运行的可执行程序，由Service Control Manager（SCM）统一管理，无需用户登录即可启动。  
+2. 计划任务是通过Task Scheduler服务触发的自动化作业，支持按时间、事件或系统状态等条件执行指定操作。  
+3. 二者均具备高权限执行能力：默认服务以LocalSystem、NetworkService或自定义账户运行；计划任务可配置最高权限（如SYSTEM）及交互式上下文。  
+4. 服务与计划任务均受Windows访问控制模型约束，其注册表项、二进制路径、配置属性等资源受ACL保护。  
+5. 服务名与任务名在系统范围内唯一，但存在命名混淆风险，如使用合法名称伪装恶意实例。
+
+二、原理与关键机制  
+1. 服务启动依赖注册表HKLM\SYSTEM\CurrentControlSet\Services下对应键值，其中ImagePath指定可执行文件路径，Start值控制启动类型。  
+2. SCM在服务启动时验证二进制路径完整性、数字签名状态（若启用强制签名策略）及调用者权限，但不校验路径中父目录权限。  
+3. 计划任务配置存储于XML格式文件（%WINDIR%\System32\Tasks\）及注册表HKLM\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Schedule\TaskCache，解析时存在反序列化逻辑。  
+4. 任务触发器（如Logon、OnIdle、EventFilter）可绕过常规登录检测，实现隐蔽持久化；高权限任务可继承父进程令牌并提升会话上下文。  
+5. 服务与任务均可配置“延迟启动”“失败后重启”等行为，被攻击者用于规避初始检测和维持驻留。
+
+三、典型类型与常见问题  
+1. 恶意服务常伪造合法厂商签名或利用已签名驱动漏洞（如BringYourOwnVulnerableDriver），绕过驱动签名强制策略。  
+2. 服务二进制路径未加引号且含空格（如C:\Program Files\app\svc.exe），可能被劫持为C:\Program.exe执行任意代码。  
+3. 计划任务配置中Principal元素设置LogonType为InteractiveToken或S4U时，易被滥用获取交互式会话权限。  
+4. 低权限用户可创建仅自身可见的任务（/RU option），但若配置RunLevel为HighestAvailable且触发器为系统级事件，则可能提权。  
+5. 服务描述字段、任务作者字段常被植入混淆字符串或URL，用于C2通信标识或逃避基于字符串的EDR规则。
+
+四、防御措施与实践建议  
+1. 启用服务路径完整性检查（sc sdshow）与任务XML Schema验证，定期扫描ImagePath和Task XML中未引号路径及可疑URI。  
+2. 部署AppLocker或Windows Defender Application Control（WDAC），限制非授权路径和服务二进制哈希执行。  
+3. 禁用非必要服务（如WSearch、TabletInputService），对必须启用的服务采用最小权限账户（如专用gMSA）而非LocalSystem。  
+4. 审计事件ID 7045（服务安装）、4697（任务创建）、4698（任务注册）并关联分析异常时间、账户、命令行参数。  
+5. 使用Sysmon配置RuleGroup监控ServiceStateChange、ScheduledTaskCreated事件，捕获无签名二进制加载及高权限任务注册行为。  
+6. 对开发运维脚本中的sc create、schtasks /create调用实施CI/CD阶段静态检查，禁止硬编码高权限上下文与绝对路径。

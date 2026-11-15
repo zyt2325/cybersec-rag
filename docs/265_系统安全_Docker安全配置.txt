@@ -1,0 +1,28 @@
+Docker安全配置  
+一、基本概念  
+1. Docker安全配置指通过容器运行时策略、镜像构建规范及宿主机协同机制，降低容器逃逸、权限滥用与横向渗透风险。  
+2. 容器并非虚拟机，其共享宿主机内核，因此内核漏洞、命名空间隔离缺陷可被利用突破容器边界。  
+3. 默认配置存在高风险：如root用户运行、特权模式启用、未限制capabilities、挂载敏感宿主机路径等。  
+4. 安全配置需覆盖镜像构建、容器运行、网络策略、存储管理及日志审计全生命周期环节。  
+
+二、原理与关键机制  
+1. 命名空间（Namespaces）实现进程、网络、挂载点等资源逻辑隔离，但不提供强安全边界，同宿主机内核仍共用。  
+2. 控制组（cgroups）限制CPU、内存、IO等资源使用量，可防止DoS类资源耗尽攻击，但无法阻止提权行为。  
+3. Linux Capabilities机制将root权限细粒度拆分，移除CAP_SYS_ADMIN等高危能力可显著降低逃逸成功率。  
+4. Seccomp-BPF过滤系统调用，禁用如clone、ptrace、bpf等易被用于容器逃逸的危险调用。  
+5. AppArmor/SELinux提供强制访问控制，需预定义策略并加载到宿主机，否则容器默认无MAC保护。  
+
+三、典型类型与常见问题  
+1. 镜像层污染：基础镜像含恶意软件或过期漏洞，构建时未执行CVE扫描与最小化精简。  
+2. 运行时配置缺陷：以root用户启动容器、启用--privileged、绑定挂载/etc或/sys/fs/cgroup等敏感路径。  
+3. 网络暴露风险：容器端口直接映射至宿主机0.0.0.0，未启用user-defined bridge或网络策略隔离。  
+4. 卷挂载隐患：使用bind mount将宿主机目录以读写方式挂入容器，且未设置noexec、nosuid、nodev选项。  
+5. 日志与监控缺失：未配置日志驱动限制大小与轮转，也未启用auditd或eBPF工具监控异常系统调用。  
+
+四、防御措施与实践建议  
+1. 构建阶段使用多阶段构建，仅复制必要二进制文件，基础镜像选用distroless或Alpine并定期更新。  
+2. 运行时禁用特权模式，以非root用户运行容器，显式丢弃所有capabilities后按需添加必要项（如CAP_NET_BIND_SERVICE）。  
+3. 启用Seccomp默认策略（docker default.json），对高危应用定制白名单，禁止unshare、mount、keyctl等调用。  
+4. 网络层面禁用docker0网桥，使用user-defined bridge配合--icc=false，并通过iptables或Cilium实施微隔离。  
+5. 挂载卷时指定ro（只读）、noexec、nosuid、nodev；避免挂载宿主机proc、sys、dev/shm等敏感路径。  
+6. 部署Docker Bench for Security自动化检查，集成Trivy扫描镜像，启用Docker内容信任（Notary）验证镜像签名。

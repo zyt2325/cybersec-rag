@@ -1,0 +1,30 @@
+CTF比赛入门
+
+一、基本概念  
+1. CTF（Capture The Flag）是网络安全领域以实战对抗为核心的技能竞赛形式，参赛者通过攻防操作获取特定标识符（Flag）得分。  
+2. Flag为唯一字符串，通常格式为flag{...}或ctf{...}，嵌入在靶机服务、文件元数据或内存中，需通过分析提取。  
+3. 比赛分为Jeopardy（解题制）、Attack-Defense（攻防对抗制）和Mixed（混合制）三类，高校教学与新人训练多采用Jeopardy模式。  
+4. 常见主办方包括DEF CON CTF、XCTF联赛、强网杯及各高校CTF社团，平台有CTFd、FBCTF和Hack The Box竞技模块。  
+5. 参赛者需掌握Linux命令行、基础网络协议、常见编程语言（Python/C/JavaScript）及二进制逆向常识，非仅依赖工具。
+
+二、原理与关键机制  
+1. Jeopardy赛制按知识域划分题目类别，如Web、Pwn、Reverse、Crypto、Misc，每类对应不同安全漏洞模型与利用逻辑。  
+2. Web类题目依赖HTTP协议栈特性，如请求头注入、模板引擎沙箱逃逸、反序列化链触发等，不涉及真实业务系统渗透。  
+3. Pwn类基于程序内存布局缺陷，如栈溢出覆盖返回地址、堆块UAF触发任意地址写，依赖glibc版本与防护机制（ASLR/NX）配置。  
+4. Crypto类聚焦密码学原语误用，如ECB模式明文块重放、RSA共模攻击、弱随机数导致私钥泄露，不考察数学推导过程。  
+5. 所有Flag均经哈希校验并绑定题目ID，平台自动判定提交有效性，禁止暴力枚举或脚本高频刷题。
+
+三、典型类型与常见问题  
+1. Web类高频考点：SQL注入（报错/布尔盲注）、SSRF（内网端口探测与Gopher协议利用）、JWT伪造（密钥爆破或算法降级）。  
+2. Reverse类常见障碍：UPX加壳识别与脱壳、Go语言符号表剥离后的函数定位、混淆JavaScript的控制流平坦化还原。  
+3. Pwn类典型卡点：libc基址泄漏失败、one_gadget不可达、堆利用中fastbin attack因tcache机制失效。  
+4. Crypto类易错点：未验证RSA填充标准（PKCS#1 v1.5 vs OAEP）、误将CTR模式当作ECB处理、忽略时间侧信道存在条件。  
+5. Misc类常融合多技术：Wireshark流量中隐写PNG IDAT段、磁盘镜像中NTFS备用数据流藏Flag、ELF节区自定义名称误导分析。
+
+四、防御措施与实践建议  
+1. 初学者应优先搭建本地靶场环境，使用Docker部署picoCTF、NahamCon等公开题库，禁用公网暴露服务。  
+2. 阅读官方Writeup前须独立完成至少70%分析步骤，重点记录调试器（GDB/PEDA）断点位置与寄存器变化规律。  
+3. Web练习需手动构造原始HTTP请求验证漏洞，禁用Burp Suite自动扫描功能，理解每个响应头字段的安全含义。  
+4. 编写Exploit时强制添加超时与异常捕获，避免脚本失控连接靶机，所有网络操作须限定本地虚拟网络段。  
+5. 参加正式比赛前完成基础防护机制实操：编译带stack canary的测试程序、用checksec验证PIE/NX状态、手动关闭ASLR临时调试。  
+6. 建立分类笔记库，按漏洞类型归档PoC核心逻辑（如ret2libc偏移计算公式、ROP gadget搜索约束条件），不保存完整exploit代码。

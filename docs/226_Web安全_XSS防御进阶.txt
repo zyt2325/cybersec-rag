@@ -1,0 +1,28 @@
+XSS防御进阶
+
+一、基本概念  
+1. XSS（跨站脚本）是攻击者向网页注入恶意脚本，使其在用户浏览器中执行的客户端注入漏洞。  
+2. 防御进阶指在基础编码/转义之外，综合内容安全策略、上下文感知输出、可信类型系统等多层机制。  
+3. 与传统XSS不同，进阶防御需应对DOM型XSS、基于存储的延迟触发、以及绕过简单HTML实体转义的新型载荷。  
+4. 安全边界不再仅限于服务端渲染，必须覆盖前端模板引擎、单页应用路由、动态eval调用等现代JS执行场景。  
+
+二、原理与关键机制  
+1. 核心原理是破坏“数据与代码”的混淆：所有不可信输入必须经上下文敏感处理后才进入执行环境。  
+2. 浏览器同源策略不阻止脚本执行，因此防御依赖输出编码、CSP指令、沙箱iframe及API权限控制协同生效。  
+3. 关键机制包括：上下文感知编码（HTML/JS/CSS/URL）、可信类型（Trusted Types）强制约束DOM操作API、CSP非内联脚本白名单。  
+4. DOMPurify等库通过AST解析而非正则清洗HTML，可抵御基于注释、标签嵌套、属性断开等绕过手法。  
+
+三、典型类型与常见问题  
+1. DOM型XSS常因location.hash、document.write、innerHTML赋值未校验引发，且服务端日志难以捕获。  
+2. 基于存储的XSS可能通过富文本编辑器、评论区、SVG元数据等隐蔽入口注入，延迟至用户交互时触发。  
+3. CSP绕过常见于unsafe-eval启用、data:协议允许、report-uri配置错误或nonce复用导致签名失效。  
+4. Trusted Types未启用时，document.write、innerHTML等高危API仍可被滥用，形成策略空窗。  
+5. 模板引擎如Vue/React虽默认转义，但v-html或dangerouslySetInnerHTML等显式绕过点易被误用。  
+
+四、防御措施与实践建议  
+1. 强制启用Trusted Types，配合createHTML/createScript等工厂函数，禁止直接调用危险DOM API。  
+2. CSP策略须设置script-src 'self' 'nonce-<value>'，禁用unsafe-inline/unsafe-eval，并启用strict-dynamic增强兼容性。  
+3. 输出编码严格按上下文选择：HTML实体化（& → &amp;）、JS字符串转义（' → \\'）、CSS字符串引号转义、URL参数encodeURIComponent。  
+4. 富文本场景使用DOMPurify并配置ALLOWED_TAGS/ALLOWED_ATTR，禁用on*事件属性与javascript:协议。  
+5. 服务端对所有用户输入做白名单校验（如邮箱格式、数字范围），前端不得仅依赖黑名单过滤。  
+6. 建立XSS检测清单：检查所有innerHTML/outerHTML/setAttribute调用点、第三方组件hook点、JSON序列化中的<script>闭合漏洞。

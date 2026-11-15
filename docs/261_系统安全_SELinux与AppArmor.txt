@@ -1,0 +1,32 @@
+SELinux与AppArmor
+
+一、基本概念  
+1. SELinux是Linux内核集成的强制访问控制（MAC）安全模块，由美国国家安全局（NSA）主导开发。  
+2. AppArmor是另一种内核级MAC框架，采用基于路径的文件访问控制策略，设计更轻量且易于管理。  
+3. 两者均独立于传统DAC（自主访问控制），在进程执行时强制校验权限，而非仅依赖用户/组身份。  
+4. SELinux默认策略为“拒绝所有”，需显式授权；AppArmor默认策略为“允许所有”，通过配置文件限制行为。  
+5. SELinux策略以类型强制（TE）为核心，AppArmor策略以配置文件（profiles）定义程序能力边界。  
+
+二、原理与关键机制  
+1. SELinux使用安全上下文（user:role:type:level）标记进程和对象，策略规则基于类型间转换与交互。  
+2. AppArmor通过路径名匹配对文件、网络套接字、信号等资源施加访问限制，不依赖文件系统标签。  
+3. SELinux支持多级安全（MLS）和多类别安全（MCS），可实现细粒度信息流隔离。  
+4. AppArmor采用学习模式（learning mode）自动生成初始策略，降低策略编写门槛。  
+5. 两者均在系统调用入口处拦截并决策，如open()、execve()、bind()等，失败时返回EACCES或EPERM。  
+6. SELinux策略编译为二进制策略包（.pp），运行时加载；AppArmor配置文件以文本形式解析并缓存为二进制blob。  
+
+三、典型类型与常见问题  
+1. SELinux常见策略冲突：如httpd进程被禁止绑定非标准端口，因type enforcement规则未授权port_type。  
+2. AppArmor profile缺失导致服务启动失败，尤其在更新软件包后未同步更新对应profile。  
+3. SELinux布尔值（booleans）误设引发功能异常，例如httpd_can_network_connect设为off将阻断反向代理。  
+4. AppArmor路径通配符（如/**）过度宽松，可能绕过预期限制，造成权限提升风险。  
+5. SELinux上下文错误迁移：cp -a保留上下文，但普通cp导致目标文件无正确type，触发拒绝访问。  
+6. 容器环境中SELinux与AppArmor共存时，若策略未协同设计，可能产生冗余限制或意外放行。  
+
+四、防御措施与实践建议  
+1. 生产环境启用SELinux时应使用targeted策略，避免strict策略带来的高维护成本。  
+2. AppArmor部署前须在测试环境启用complain模式，分析日志（/var/log/audit/audit.log或dmesg）修正profile。  
+3. 对特权进程（如数据库、Web服务器）编写最小权限策略，禁用execmem、capability dac_override等高危权限。  
+4. 使用semanage fcontext管理SELinux文件上下文持久化规则，避免restorecon后策略失效。  
+5. 定期审计策略有效性：SELinux用ausearch -m avc -ts recent；AppArmor用aa-logprof或aa-status。  
+6. 容器运行时需显式传递安全策略：Podman/Docker中分别通过--security-opt label=...或--security-opt apparmor=...启用。

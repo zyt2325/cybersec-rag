@@ -1,0 +1,29 @@
+云原生安全  
+
+一、基本概念  
+1. 云原生安全指在容器、微服务、声明式API、不可变基础设施等云原生范式下，保障应用全生命周期安全的能力体系。  
+2. 区别于传统边界防护，其核心关注点从网络边界转向工作负载身份、运行时行为与配置可信性。  
+3. 安全责任模型为“共担责任”，云服务商负责底层基础设施安全，用户负责容器镜像、编排配置、应用代码及运行时策略。  
+4. 关键对象包括容器镜像、Kubernetes API Server、etcd、Service Mesh控制平面、CI/CD流水线及无服务器函数执行环境。  
+
+二、原理与关键机制  
+1. 镜像签名与验证机制（如Cosign、Notary v2）确保镜像来源可信且未被篡改，依赖公钥基础设施与内容寻址哈希。  
+2. Kubernetes RBAC结合OPA/Gatekeeper实现细粒度策略即代码（Policy-as-Code），对API请求进行动态准入控制。  
+3. 运行时保护依赖eBPF或LSM（如SELinux/AppArmor）实现无侵入式系统调用监控，捕获异常进程、文件访问与网络连接。  
+4. 服务网格（如Istio）通过mTLS自动加密东西向流量，并基于SPIFFE标识实现零信任服务身份认证。  
+5. 不可变基础设施原则要求运行中容器禁止修改，所有变更必须经CI/CD重建镜像并重新部署，阻断运行时持久化攻击。  
+
+三、典型类型与常见问题  
+1. 镜像漏洞：基础镜像含高危CVE（如Log4j）、多余二进制（curl、vim）扩大攻击面，静态扫描常漏检多层嵌套依赖。  
+2. 配置错误：Kubernetes Pod以root权限运行、启用特权容器、未限制capabilities、Secret明文挂载至环境变量。  
+3. API滥用：未加固的kubelet只读端口暴露节点信息；etcd未启用TLS双向认证导致集群元数据泄露。  
+4. 供应链攻击：恶意容器镜像上传至公共仓库、CI/CD流水线遭投毒（如劫持npm/pip源）、开源组件依赖注入后门。  
+5. 服务间横向移动：缺失网络策略（NetworkPolicy）导致Pod间任意通信，攻击者利用漏洞穿透至高权限服务。  
+
+四、防御措施与实践建议  
+1. 实施镜像构建阶段安全：使用Distroless基础镜像，启用BuildKit构建时扫描，强制签名并配置镜像拉取策略（ImagePolicyWebhook）。  
+2. 最小权限原则落地：为ServiceAccount绑定最小RBAC角色，禁用default ServiceAccount自动挂载token，限制PodSecurityPolicy或Pod Security Admission。  
+3. 运行时检测集成：部署Falco或Tracee监听异常syscalls（如execve with /dev/shm），配合Sysdig Secure或Wiz实现上下文关联告警。  
+4. 自动化策略治理：在GitOps流程中嵌入Conftest或KubeLinter检查YAML配置，将安全策略版本化并纳入PR门禁。  
+5. 服务网格强化：启用Istio mTLS严格模式，通过PeerAuthentication和RequestAuthentication定义服务间认证策略，禁用非mTLS流量。  
+6. 无服务器安全聚焦：限制函数执行内存与超时，禁用不必要扩展（如AWS Lambda层），对事件源（S3、Kafka）启用加密与访问日志审计。

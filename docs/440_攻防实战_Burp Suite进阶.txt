@@ -1,0 +1,28 @@
+Burp Suite进阶
+
+一、基本概念  
+1. Burp Suite Professional 是集成式Web应用安全测试平台，核心组件包括Proxy、Repeater、Intruder、Scanner、Sequencer等。  
+2. 进阶使用强调对HTTP/HTTPS流量的深度操控能力，如请求重放、参数变异、会话状态跟踪及自动化协同分析。  
+3. Burp Extensions（如Logger++、JSON Beautifier）通过Java/Python API扩展功能，支持自定义逻辑注入与协议解析。  
+4. Project options配置影响全局行为，包括SSL证书信任、连接超时、请求速率限制及被动扫描策略阈值。  
+
+二、原理与关键机制  
+1. Proxy模块采用中间人代理模式，通过本地监听端口截获浏览器流量，并支持手动/自动拦截与修改。  
+2. Intruder基于位置标记（§）实现多维度参数模糊测试，支持四种攻击类型（Sniper、Battering ram等）及payload处理规则链。  
+3. Scanner依赖主动探测与被动分析双引擎：主动发送构造请求验证漏洞，被动解析响应头/体提取技术栈与敏感信息。  
+4. Sequencer通过统计学方法（如Chi-square检验）评估会话令牌随机性，采样需覆盖足够熵值与时间跨度。  
+
+三、典型类型与常见问题  
+1. 代理配置错误导致HTTPS流量解密失败，常见原因为未正确安装Burp CA证书或浏览器忽略系统证书存储。  
+2. Intruder并发过高引发目标服务拒绝响应，表现为HTTP 429或连接重置，需调整线程数与延迟策略。  
+3. Scanner误报率升高常源于动态内容（如CSRF Token变更）、反爬机制干扰或自定义JavaScript渲染未被正确处理。  
+4. 扩展插件内存泄漏或未签名JAR加载失败，多因JVM版本不兼容或Burp API接口变更未适配。  
+5. Repeater中修改请求后响应异常，可能由服务端会话绑定、Referer校验、X-Requested-With头缺失或CSRF防护触发。  
+
+四、防御措施与实践建议  
+1. 测试环境须与生产隔离，禁止在未授权系统上启用主动扫描或Intruder爆破，避免触发WAF封禁或日志告警。  
+2. 使用Burp Collaborator进行带外（OOB）检测时，应关闭自动轮询并人工确认交互，防止误判DNS/HTTP回连。  
+3. 敏感操作（如登录凭证重放）前需清除Cookie Jar并禁用自动会话处理，避免Burp自动注入过期Token导致结果失真。  
+4. 定期更新Burp Suite及扩展插件，关注官方发布的CVE修复公告，特别是涉及Java反序列化与UI渲染组件的安全补丁。  
+5. 对含JWT或加密参数的目标，结合Decoder模块进行Base64解码与结构分析，但不得逆向私钥或硬编码密钥。  
+6. 导出报告时脱敏处理URL路径、参数值及响应体中的PII字段，遵循GDPR与等保2.0数据最小化原则。

@@ -1,0 +1,28 @@
+Java框架常见漏洞
+
+一、基本概念  
+1. Java框架常见漏洞指在Spring、Struts、Hibernate等主流框架中因设计缺陷、配置不当或组件集成问题引发的安全风险。  
+2. 这类漏洞通常不源于Java语言本身，而是框架对用户输入处理、反射调用、序列化机制等特性的不当使用所致。  
+3. 漏洞影响范围广，可能造成远程代码执行、敏感信息泄露、权限绕过等高危后果，且常被APT组织和自动化工具利用。  
+4. 框架版本迭代频繁，旧版漏洞（如Struts2-045、Spring Cloud Config Server目录遍历）仍存在于大量遗留系统中。  
+
+二、原理与关键机制  
+1. 反射机制滥用：框架为实现动态绑定广泛使用反射，攻击者可通过构造恶意参数触发非预期类方法调用。  
+2. 表达式语言（EL）注入：Spring EL、OGNL等表达式引擎若未严格限制上下文和执行范围，可被用于执行任意Java代码。  
+3. 反序列化逻辑缺陷：框架默认反序列化器（如Jackson、XStream）未校验类白名单，导致攻击者操控字节流实例化危险类。  
+4. 自动绑定（Auto-binding）机制：控制器直接将HTTP参数映射至对象属性时，若未约束字段访问范围，可能覆盖敏感内部状态。  
+
+三、典型类型与常见问题  
+1. Spring Framework SpEL远程代码执行：通过@Value注解或异常处理页面中的未过滤EL表达式触发JNDI lookup或命令执行。  
+2. Struts2参数覆盖与OGNL注入：Action属性名被恶意构造为OGNL表达式（如#context），结合动态方法调用导致RCE。  
+3. Hibernate HQL注入：拼接用户输入到HQL查询字符串中，绕过参数化机制，引发越权数据读取或数据库函数调用。  
+4. Jackson反序列化漏洞（CVE-2017-7525）：启用DefaultTypeResolver且未配置白名单时，攻击者可指定反序列化目标类并触发构造器/Setter链。  
+5. Spring Boot Actuator未授权访问：生产环境暴露/actuator/env、/actuator/jolokia等端点且未启用认证，导致配置信息与JVM状态泄露。  
+
+四、防御措施与实践建议  
+1. 严格遵循最小权限原则：禁用框架调试功能（如Spring Boot devtools）、关闭非必要Actuator端点，限制HTTP方法与路径访问。  
+2. 输入验证与输出编码双轨并行：对所有外部输入（请求参数、Header、Cookie）进行白名单校验，模板渲染时强制HTML/JS编码。  
+3. 序列化防护：Jackson配置ObjectMapper.setSerializationInclusion(JsonInclude.Include.NON_NULL)，禁用enableDefaultTyping；XStream设置安全框架白名单。  
+4. 禁用危险特性：Spring配置spring.expression.enabled=false；Struts2设置struts.enable.DynamicMethodInvocation=false。  
+5. 依赖治理常态化：使用OWASP Dependency-Check或Snyk定期扫描jar包，优先升级至官方已修复版本（如Spring Framework ≥5.3.30）。  
+6. 安全编码规范嵌入开发流程：禁止在HQL/JPQL中字符串拼接；控制器方法参数必须显式声明@RequestBody或@RequestParam，禁用全局绑定。

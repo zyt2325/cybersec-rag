@@ -1,0 +1,28 @@
+CORS跨域配置错误
+
+一、基本概念  
+1. CORS（跨域资源共享）是浏览器实施的同源策略扩展机制，用于控制前端JavaScript发起的跨域HTTP请求是否被允许。  
+2. 它通过服务端响应头（如Access-Control-Allow-Origin）显式声明可信任的源，而非默认放行或完全禁止。  
+3. 配置错误指服务端对CORS头设置不当，导致本应受限的跨域访问被意外允许，或本应开放的合法场景被阻断。  
+4. 该问题本质属于服务端安全配置缺陷，影响范围取决于前端应用调用该API的上下文及敏感数据暴露程度。  
+
+二、原理与关键机制  
+1. 浏览器对非简单请求（如含自定义头、Content-Type为application/json）自动触发预检请求（OPTIONS），需服务端正确响应预检头。  
+2. Access-Control-Allow-Origin若设为通配符*，则无法携带凭据（Cookie、Authorization头），但若设为具体域名且Allow-Credentials为true，则必须精确匹配。  
+3. Access-Control-Allow-Headers和Access-Control-Allow-Methods需严格列出客户端实际使用的头名与方法，否则预检失败。  
+4. Vary: Origin响应头缺失时，CDN或代理可能缓存错误的CORS响应，导致不同Origin请求获得不一致的权限判定。  
+
+三、典型类型与常见问题  
+1. 将Access-Control-Allow-Origin设为*同时启用Access-Control-Allow-Credentials: true，导致凭据泄露风险。  
+2. 使用正则或字符串匹配动态生成Origin响应头，未严格校验协议、端口、子域，造成域名伪造绕过（如evil.com.attacker.com）。  
+3. 对Origin头不做校验直接回显，使任意恶意站点均可通过构造Origin值获取合法响应。  
+4. 仅在开发环境启用宽松CORS策略（如Origin: http://localhost:*），上线后未及时收紧，遗留生产环境风险。  
+5. 忽略预检请求处理，对OPTIONS方法返回200但缺失必要CORS头，导致合法跨域请求被浏览器拦截。  
+
+四、防御措施与实践建议  
+1. 优先采用白名单机制：明确维护可信Origin列表，拒绝不在列表中的Origin，禁用通配符与Origin回显。  
+2. 若需支持凭据，确保Access-Control-Allow-Origin为单个精确域名（不含端口通配），且Access-Control-Allow-Credentials为true。  
+3. 对预检请求单独实现轻量级处理逻辑，严格校验Access-Control-Request-Method与Access-Control-Request-Headers后再响应。  
+4. 所有CORS响应头必须配合Vary: Origin，防止中间设备缓存污染。  
+5. 在反向代理（如Nginx）或API网关层统一管控CORS策略，避免业务代码重复或遗漏配置。  
+6. 使用自动化工具（如Burp Suite插件、CORS-Validator）定期扫描响应头，识别宽松或矛盾的CORS策略配置。

@@ -1,0 +1,5 @@
+__pycache__/
+*.pyc
+data/history/
+vector_store_data.npz
+vector_store_meta.json

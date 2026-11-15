@@ -1,0 +1,26 @@
+TLS握手过程
+
+一、基本概念  
+1. TLS握手是客户端与服务器建立加密通信前的协商过程，用于交换密钥、验证身份并协商密码套件。  
+2. 握手发生在TCP连接建立之后、应用层数据传输之前，典型耗时为1–2个RTT（往返时延）。  
+3. TLS 1.2及以前版本采用显式握手协议；TLS 1.3大幅精简流程，将密钥交换与身份认证合并至1-RTT甚至0-RTT模式。  
+4. 握手消息均以明文传输（除Finished消息外），但内容受后续密钥保护，且ServerHello后所有消息需加密（TLS 1.3起）。  
+
+二、原理与关键机制  
+1. 密钥交换基于非对称加密（如RSA、ECDHE）或前向安全密钥协商（ECDHE为TLS 1.2/1.3强制推荐）。  
+2. 身份认证依赖X.509数字证书，服务器必须提供由可信CA签发的有效证书，客户端执行链式验证与域名匹配（SNI扩展支持多域名虚拟主机）。  
+3. Finished消息使用HMAC-SHA256（TLS 1.2）或HKDF导出的verify_data（TLS 1.3）进行完整性校验，防止中间人篡改握手参数。  
+4. 密码套件定义密钥交换算法、认证机制、批量加密算法和MAC/HKDF哈希函数，如TLS_AES_256_GCM_SHA384（TLS 1.3默认）。  
+
+三、典型类型与常见问题  
+1. 完整握手（Full Handshake）：双方均无会话复用信息时触发，含ClientHello、ServerHello、Certificate、KeyExchange等完整交互。  
+2. 会话复用（Session Resumption）分两种：基于Session ID（TLS 1.2）或Session Ticket（加密票据，服务端无状态存储），可跳过证书验证与密钥交换。  
+3. TLS 1.3移除了RSA密钥传输、静态DH、RC4、SHA-1等不安全算法，禁用重协商与压缩，降低降级攻击风险。  
+4. 常见漏洞包括ROBOT（RSA密钥恢复）、Logjam（DH组降级）、FREAK（强制使用出口级RSA密钥），均源于握手阶段算法协商缺陷。  
+
+四、防御措施与实践建议  
+1. 服务器应禁用TLS 1.0/1.1，强制启用TLS 1.2+，优先配置ECDHE-RSA-AES256-GCM-SHA384等强套件，禁用弱曲线（如secp112r1）。  
+2. 启用OCSP Stapling减少证书状态查询延迟，配合CRLSet或OCSP Must-Staple扩展增强吊销检查实效性。  
+3. 对于高敏感服务，禁用0-RTT数据（易受重放攻击），或通过应用层绑定单次令牌（如HTTP/3中的Early Data Token）限制重放窗口。  
+4. 客户端需校验证书有效期、签名算法强度（如拒绝SHA-1签名证书）、主题备用名称（SAN）匹配，且不忽略证书警告。  
+5. 使用TLS配置扫描工具（如Mozilla SSL Config Generator、Qualys SSL Labs）定期审计服务端策略，确保HSTS头启用并设置合理max-age。

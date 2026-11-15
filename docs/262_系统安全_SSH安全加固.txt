@@ -1,0 +1,30 @@
+SSH安全加固
+
+一、基本概念  
+1. SSH（Secure Shell）是基于应用层的加密网络协议，用于远程登录和安全数据传输。  
+2. 默认使用TCP端口22，支持用户身份认证、会话加密与完整性保护三重安全功能。  
+3. 常见实现包括OpenSSH（Linux/Unix主流）、Dropbear（嵌入式系统轻量级实现）。  
+4. SSH协议包含两层：传输层提供密钥交换与加密通道，用户认证层处理登录凭证验证。  
+5. SSH密钥对由私钥（本地严格保密）和公钥（部署至服务器authorized_keys）构成非对称认证基础。
+
+二、原理与关键机制  
+1. 密钥交换采用Diffie-Hellman或ECDH算法，协商出临时会话密钥，抵御中间人窃听。  
+2. 用户认证支持密码、公钥、键盘交互及多因素组合，公钥认证默认禁用密码回退。  
+3. 加密套件由客户端与服务端协商确定，优先选用AES-GCM、ChaCha20-Poly1305等AEAD算法。  
+4. 主机密钥（如ssh_host_rsa_key）用于服务器身份标识，首次连接时客户端缓存其指纹以防范冒充。  
+5. 连接复用通过ControlMaster机制减少重复密钥交换开销，但需防范控制套接字权限泄露风险。
+
+三、典型类型与常见问题  
+1. 暴力破解：攻击者持续尝试用户名/密码组合，尤其针对root或弱口令账户。  
+2. 密钥劫持：私钥文件未设权限（如chmod 600）、被恶意程序读取或内存中明文残留。  
+3. 版本漏洞：旧版OpenSSH存在远程代码执行缺陷（如CVE-2023-28531），未及时更新易受利用。  
+4. 配置疏漏：sshd_config中PermitRootLogin yes、PasswordAuthentication yes等设置扩大攻击面。  
+5. 日志缺失：未启用LogLevel VERBOSE或未集中收集auth.log，导致入侵行为难以追溯。
+
+四、防御措施与实践建议  
+1. 禁用root直接登录，强制使用普通用户+sudo，或配置PermitRootLogin prohibit-password。  
+2. 关闭密码认证，仅启用公钥认证，并要求私钥使用强密码加密（ssh-keygen -o -a 100）。  
+3. 修改默认端口为非标准高位端口（如2222），配合防火墙限制源IP访问范围。  
+4. 在sshd_config中启用UsePAM yes、MaxAuthTries 3、LoginGraceTime 60，限制认证尝试频次与时长。  
+5. 部署fail2ban监控/var/log/auth.log，自动封禁多次失败登录的IP地址。  
+6. 定期轮换主机密钥，使用ssh-keygen -t ed25519 -f /etc/ssh/ssh_host_ed25519_key生成现代密钥。

@@ -1,0 +1,30 @@
+反序列化漏洞
+
+一、基本概念  
+1. 反序列化是将字节流或结构化数据（如JSON、XML、Java对象流）还原为内存中可执行对象的过程。  
+2. 反序列化漏洞指在未充分校验输入数据的情况下，将恶意构造的数据还原为对象，导致非预期行为。  
+3. 该漏洞本质属于输入验证缺失引发的代码执行类缺陷，常见于服务端接收外部序列化数据的场景。  
+4. 漏洞影响范围广，涉及Java、PHP、Python、.NET等多种语言及其主流框架与库。  
+5. 与序列化漏洞不同，反序列化漏洞触发点在数据解析阶段，而非数据生成阶段。
+
+二、原理与关键机制  
+1. 某些语言（如Java）的反序列化机制支持自动调用特殊方法（如readObject、__wakeup），形成攻击入口点。  
+2. 反序列化过程不校验类名、字段类型及继承关系，攻击者可操控类加载器实例化任意已加载类。  
+3. 利用链（Gadget Chain）由多个合法类组成，通过方法调用串联实现命令执行、文件读写等敏感操作。  
+4. 部分框架（如Apache Commons Collections）因设计特性易被纳入利用链，成为高频攻击载体。  
+5. JSON/XML等轻量格式虽无原生对象方法调用能力，但若配合反射或动态类加载仍可能触发逻辑漏洞。
+
+三、典型类型与常见问题  
+1. Java平台常见于ObjectInputStream.readObject()未配合白名单校验，导致Commons Collections、Groovy等利用链生效。  
+2. PHP中unserialize()函数处理用户可控字符串时，若存在魔术方法（如__destruct、__wakeup）且类已定义，可触发任意代码逻辑。  
+3. Python的pickle模块反序列化可直接执行任意代码，其安全性模型默认不设防，禁止用于不可信数据。  
+4. .NET中的BinaryFormatter反序列化在未启用SerializationBinder约束时，允许加载任意程序集类型。  
+5. 常见误判是认为JSON/YAML无风险，实则Jackson、SnakeYAML等库若开启enableDefaultTyping等危险配置，仍可触发反序列化漏洞。
+
+四、防御措施与实践建议  
+1. 优先避免反序列化不可信数据；确需处理时，使用JSON等仅含数据结构的格式，并禁用动态类型解析功能。  
+2. 实施严格白名单机制：Java中重写resolveClass()限制可反序列化类；PHP中使用json_decode替代unserialize。  
+3. 升级至安全版本：禁用Java中已废弃的ObjectInputStream子类；停用.NET中BinaryFormatter，改用System.Text.Json。  
+4. 在反序列化前对输入做完整性校验（如HMAC签名），并部署WAF规则识别已知利用链特征载荷。  
+5. 启用JVM安全策略限制反射与类加载权限；生产环境关闭Java调试接口（JDWP）以防利用链扩展。  
+6. 对自定义反序列化逻辑进行威胁建模，审计所有重写的readObject、__unserialize等钩子方法的可信边界。

@@ -1,0 +1,28 @@
+Host头攻击
+
+一、基本概念  
+1. Host头攻击是一种利用HTTP请求中Host字段被服务端未校验或错误解析而发起的Web应用层攻击。  
+2. HTTP/1.1协议强制要求客户端在请求中携带Host头，用于标识目标域名，是虚拟主机托管的基础机制。  
+3. 攻击者通过篡改、重复、伪造Host头值，诱导服务端执行非预期逻辑，如缓存污染、密码重置劫持、SSRF或访问控制绕过。  
+4. 该漏洞本质属于服务端输入验证缺失，而非协议缺陷，常见于未显式绑定域名或依赖Host头做业务决策的应用。  
+
+二、原理与关键机制  
+1. Web服务器（如Nginx、Apache）和应用框架（如Spring Boot、Django）常将Host头直接用于生成绝对URL、设置Cookie域或路由分发。  
+2. 当服务端代码调用request.get_host()、$_SERVER['HTTP_HOST']等接口获取Host值且未白名单校验时，恶意值可注入响应内容。  
+3. 反向代理配置不当（如未清除原始Host头或未设置proxy_set_header Host $host）会导致后端应用误信伪造Host。  
+4. 某些框架在开发模式下默认允许任意Host头访问，上线后若未关闭调试配置，会暴露攻击面。  
+
+三、典型类型与常见问题  
+1. 密码重置中毒：攻击者将Host设为攻击者域名，使重置链接指向恶意站点，窃取用户令牌。  
+2. Web缓存投毒：利用CDN或反向代理缓存包含伪造Host头的响应，导致后续合法用户接收污染内容。  
+3. 基于Host的访问控制绕过：系统用Host值判断租户或权限（如if host == "admin.example.com"），伪造后提升权限。  
+4. SSRF触发：后端以Host头拼接内部API地址（如"http://" + host + "/internal/status"），引发内网探测。  
+5. CORS策略绕过：服务端将Host头写入Access-Control-Allow-Origin响应头，造成任意域跨域读取敏感数据。  
+
+四、防御措施与实践建议  
+1. 服务端应禁用对Host头的直接信任，所有业务逻辑中使用预定义的可信域名列表进行严格比对。  
+2. Web服务器配置中显式设置ServerName或server_name，并启用Host头校验模块（如Nginx的valid_referers配合map）。  
+3. 应用启动时强制指定允许的Host（如Django的ALLOWED_HOSTS、Spring Boot的server.forward-headers-strategy=framework）。  
+4. 禁用开发环境调试功能上线，移除如Flask的debug=True、Express的app.set('env', 'development')等高危配置。  
+5. 反向代理需清除客户端原始Host头，统一设置为上游真实域名（如proxy_set_header Host example.com）。  
+6. 对所有由Host头参与构造的输出（URL、Cookie Domain、CORS头）实施白名单过滤，拒绝非法字符与格式。

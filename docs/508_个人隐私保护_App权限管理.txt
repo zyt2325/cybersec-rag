@@ -1,0 +1,30 @@
+App权限管理
+
+一、基本概念  
+1. App权限是操作系统授予应用程序访问设备资源或用户数据的受限能力，如位置、联系人、摄像头等。  
+2. 权限分为正常权限（安装时自动授予）和危险权限（需运行时显式请求用户授权）。  
+3. Android 6.0（API 23）起强制实施运行时权限模型，iOS 自 iOS 6 起引入基于用途字符串的细粒度授权机制。  
+4. 权限声明在应用清单文件（AndroidManifest.xml 或 Info.plist）中静态定义，但实际授予由用户动态决策。  
+5. 权限粒度直接影响攻击面：过度申请权限会扩大潜在数据泄露与滥用风险。
+
+二、原理与关键机制  
+1. 操作系统内核通过访问控制策略（如Linux DAC、SELinux策略）拦截未授权的系统调用。  
+2. Android采用PermissionManagerService统一管理权限状态，与Package Manager协同验证调用合法性。  
+3. iOS使用TCC（Transparency, Consent, and Control）框架记录每次授权决策，并强制应用提供NSUsageDescription说明用途。  
+4. 权限检查发生在API调用入口处，如Android的checkSelfPermission()或iOS的CLLocationManager.requestWhenInUseAuthorization()。  
+5. 权限撤销后，相关API返回空值或抛出SecurityException，应用须处理异常而非静默降级。
+
+三、典型类型与常见问题  
+1. 敏感权限包括身体传感器（加速度计）、精确位置、通话记录、短信读取，常被恶意App滥用窃取行为特征。  
+2. “权限捆绑”指应用将非核心功能与主功能强绑定申请权限，如手电筒App索要通讯录权限。  
+3. 权限过度申请表现为声明远超功能所需的权限集合，静态分析可发现AndroidManifest中冗余uses-permission标签。  
+4. 权限劫持攻击利用Activity劫持或PendingIntent重定向，诱使用户在伪造界面授予高危权限。  
+5. 权限继承漏洞存在于Android共享UID应用间，一方获权可间接访问另一方受保护资源。
+
+四、防御措施与实践建议  
+1. 开发者应遵循最小权限原则，仅声明并请求当前版本功能必需的权限，动态申请前校验业务合理性。  
+2. 在请求权限前向用户展示清晰、场景化的说明弹窗（非系统默认提示），解释用途及拒绝后果。  
+3. 实现权限拒绝后的优雅降级逻辑，如定位失败时提供手动输入地址选项，避免功能完全不可用。  
+4. 定期审计第三方SDK权限需求，禁用其未使用的敏感权限声明，或通过ProGuard移除无引用的uses-permission。  
+5. 安全测试阶段使用adb shell pm revoke或XCUITest模拟权限拒绝，验证应用鲁棒性与数据隔离有效性。  
+6. 终端用户应定期审查已授予权限（Android设置→应用→权限；iOS设置→隐私与安全性），关闭长期未使用的授权项。

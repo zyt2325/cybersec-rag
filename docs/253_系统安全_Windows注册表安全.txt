@@ -1,0 +1,30 @@
+Windows注册表安全
+
+一、基本概念  
+1. Windows注册表是操作系统核心数据库，存储硬件配置、软件设置、用户策略及系统启动参数等关键信息。  
+2. 注册表由HKEY_CLASSES_ROOT、HKEY_CURRENT_USER、HKEY_LOCAL_MACHINE等五大根键构成，逻辑结构为键（Key）、子键（Subkey）和值（Value）。  
+3. 所有用户会话共享HKEY_LOCAL_MACHINE，而HKEY_CURRENT_USER仅对当前登录用户生效，权限隔离直接影响安全边界。  
+4. 注册表项默认继承父键ACL，但可被显式修改，其访问控制列表（ACL）决定进程能否读写特定路径。  
+5. 系统服务、驱动程序、组策略客户端均依赖注册表持久化配置，使其成为攻击者持久化与横向移动的高价值目标。
+
+二、原理与关键机制  
+1. 注册表操作通过Win32 API（如RegOpenKeyEx、RegSetValueEx）实现，所有访问经由内核对象管理器（Object Manager）验证令牌权限。  
+2. 注册表重定向（Registry Redirection）和反射（Reflection）机制在WoW64环境下隔离32/64位应用视图，可能引入权限绕过风险。  
+3. 组策略首选项（GPP）曾将加密凭据存于SYSVOL注册表XML文件中，密钥硬编码导致离线解密风险，体现注册表与域控策略的耦合脆弱性。  
+4. 注册表事务日志（REGF日志）记录未提交变更，异常关机后可能残留敏感配置快照，存在取证泄露隐患。  
+5. 注册表符号链接（Symbolic Link）允许跨键映射，恶意构造可误导系统加载错误驱动或DLL，需严格校验目标路径合法性。
+
+三、典型类型与常见问题  
+1. 启动项劫持：攻击者在Run、RunOnce等自动运行键下添加恶意程序路径，实现开机自启与权限提升。  
+2. 服务持久化：修改Services子键中的ImagePath或FailureActions值，使恶意服务随系统启动并规避常规进程监控。  
+3. 浏览器劫持：篡改HKEY_CURRENT_USER\Software\Microsoft\Internet Explorer相关键值，强制修改主页、搜索提供者或禁用安全功能。  
+4. 权限配置不当：HKEY_LOCAL_MACHINE\SOFTWARE下第三方软件键被设为Everyone-FullControl，导致普通用户可篡改全局配置。  
+5. 隐藏键值滥用：使用空格、不可见Unicode字符命名注册表值，或利用注册表大小写不敏感特性规避基于字符串的检测规则。
+
+四、防御措施与实践建议  
+1. 启用注册表审核策略（Audit Registry），对关键路径（如Run键、Services、Policies）配置SACL，记录成功/失败的写入事件。  
+2. 使用组策略限制用户对HKEY_LOCAL_MACHINE的写权限，仅授权管理员组修改系统级配置，避免非特权用户注入启动项。  
+3. 部署注册表完整性监控工具，定期比对基线哈希（如Sysmon Event ID 13/14），识别未授权的键值变更与时间戳异常。  
+4. 禁用不必要的注册表远程访问（Remote Registry服务），关闭TCP 135/445端口上的注册表RPC接口，阻断横向渗透通道。  
+5. 开发软件时避免将密码、API密钥等敏感数据明文存入注册表，确需存储应调用DPAPI加密并绑定用户SID与机器标识。  
+6. 在安全加固基线中移除HKEY_CURRENT_USER\Software\Microsoft\Windows\CurrentVersion\Run下未知签名的启动项，优先采用计划任务替代注册表启动。

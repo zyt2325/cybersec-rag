@@ -1,0 +1,28 @@
+DOM型XSS
+
+一、基本概念  
+1. DOM型XSS是一种客户端XSS，攻击载荷在浏览器端通过修改DOM节点触发，不经过服务器响应体。  
+2. 漏洞成因在于JavaScript直接读取URL片段、location对象属性等不可信源，并未经净化写入DOM。  
+3. 与反射型、存储型XSS不同，其恶意代码不参与HTTP请求/响应往返，服务端日志中通常无痕迹。  
+4. 攻击效果依赖目标页面的前端逻辑，同一URL在不同JS执行路径下可能触发或不触发漏洞。  
+
+二、原理与关键机制  
+1. 核心机制是document.write()、innerHTML、outerHTML、insertAdjacentHTML()等危险API将未过滤数据注入DOM。  
+2. 常见污染源包括location.href、location.search、location.hash、document.referrer及自定义URL参数解析结果。  
+3. 浏览器在解析HTML后构建DOM树，JavaScript动态修改该树时若插入含script标签或事件处理器的字符串即触发执行。  
+4. 执行上下文严格限定于当前页面域，无法跨域访问其他站点Cookie，但可劫持用户会话、篡改页面内容。  
+
+三、典型类型与常见问题  
+1. URL哈希劫持：利用location.hash值被直接赋给innerHTML，如#<img src=x onerror=alert(1)>可触发。  
+2. 前端路由参数污染：单页应用中从window.location.pathname或URLSearchParams提取参数并渲染到DOM。  
+3. JSONP回调名注入：将URL中callback参数拼接到script标签src属性，导致任意函数名执行。  
+4. document.write滥用：在页面加载完成后调用document.write()重写整个文档，传入恶意字符串引发重解析。  
+5. 事件处理器绑定错误：使用addEventListener时将用户输入作为事件类型名，或内联onxxx属性动态赋值。  
+
+四、防御措施与实践建议  
+1. 优先使用textContent、innerText替代innerHTML设置文本内容，避免HTML解析。  
+2. 若必须插入HTML，使用DOMPurify等成熟库对输入进行白名单过滤，禁用script、onerror等危险标签和属性。  
+3. 读取URL参数时使用URL API（如new URL(location.href).searchParams）而非正则或split，降低解析风险。  
+4. 避免将location、document.referrer等全局对象属性直接用于DOM操作，应先校验格式与字符集。  
+5. 使用CSP策略限制内联脚本执行，设置script-src 'self'并禁用unsafe-inline和unsafe-eval。  
+6. 对前端路由参数实施强类型校验，如ID字段仅接受数字，页面名仅匹配预定义枚举值列表。

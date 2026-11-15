@@ -1,0 +1,30 @@
+Cookie与追踪技术
+
+一、基本概念  
+1. Cookie是服务器通过HTTP响应头Set-Cookie字段发送给浏览器的小型文本数据，由浏览器自动存储并在后续请求中回传。  
+2. 追踪技术指通过持久化标识符（如Cookie、Fingerprint等）跨会话、跨网站识别用户行为的技术集合。  
+3. 第一方Cookie由当前访问域名设置并读取，用于登录状态、偏好保存等合法功能；第三方Cookie由嵌入资源（如广告、分析脚本）所属域名设置。  
+4. HTTP-only属性可防止JavaScript读取Cookie，但不影响浏览器自动携带；Secure属性要求仅通过HTTPS传输，防范明文窃听。  
+5. SameSite属性控制Cookie在跨站请求中的发送行为，Lax为默认值，Strict最严格，None需配合Secure使用。  
+
+二、原理与关键机制  
+1. 浏览器依据同源策略和Cookie作用域（Domain、Path）匹配请求URL，决定是否附加对应Cookie。  
+2. 服务端通过解析Cookie中的Session ID关联后端会话存储，实现无状态HTTP上的状态维持。  
+3. 第三方追踪依赖页面嵌入的跨域资源（如<iframe>、<img>、<script>），其发起的请求自动携带目标域名的第三方Cookie。  
+4. Cookie有效期由Expires或Max-Age属性控制，会话Cookie在浏览器关闭后失效，持久Cookie可长期保留。  
+5. 浏览器按优先级处理多个同名Cookie：路径更精确者优先；同路径时，后设置的覆盖先设置的。  
+
+三、典型类型与常见问题  
+1. 会话Cookie缺乏HttpOnly/Secure标记易遭XSS窃取，导致会话劫持。  
+2. 第三方Cookie被用于跨站用户画像构建，存在隐私泄露风险，已被Chrome、Firefox等主流浏览器逐步限制或默认禁用。  
+3. Supercookie（如ETag、HSTS缓存、Canvas指纹）不依赖HTTP Cookie，规避传统清除机制，增强追踪鲁棒性。  
+4. Cookie注入漏洞发生在服务端未校验Cookie内容时，攻击者伪造恶意值触发逻辑错误或服务端注入。  
+5. 同站跨域场景下，若SameSite=Strict配置不当，可能导致支付跳转失败或CSRF防护过度削弱。  
+
+四、防御措施与实践建议  
+1. 敏感Cookie必须设置HttpOnly、Secure和SameSite=Strict/Lax，禁止在URL中传递Session ID。  
+2. 服务端应校验Cookie签名（如HMAC-SHA256），拒绝未签名或签名无效的Cookie，防范篡改。  
+3. 前端避免将敏感信息（如用户ID、权限等级）明文存入Cookie；优先使用短期JWT并绑定IP/User-Agent。  
+4. 网站应提供Cookie分类管理界面，明确告知用户第一方/第三方用途，并支持按类开关。  
+5. 开发者需定期审计第三方SDK，禁用非必要追踪脚本；采用Privacy Sandbox API（如Topics、Attribution Reporting）替代第三方Cookie。  
+6. 安全测试中须检查Set-Cookie响应头完整性，验证所有认证相关Cookie均启用HttpOnly与Secure属性。

@@ -1,0 +1,28 @@
+内存保护机制
+
+一、基本概念  
+1. 内存保护是操作系统与硬件协同实现的访问控制机制，用于隔离进程地址空间，防止非法读写操作。  
+2. 其核心目标是阻止恶意或错误代码篡改其他进程或内核的关键数据结构与执行代码。  
+3. 该机制依赖CPU提供的内存管理单元（MMU）和页表支持，属于底层可信计算基（TCB）的关键组成部分。  
+4. 所有现代通用操作系统（如Linux、Windows、macOS）均强制启用基础内存保护，不可禁用。  
+
+二、原理与关键机制  
+1. 地址空间布局随机化（ASLR）通过随机化程序加载基址、堆栈、共享库位置，增加攻击者预测目标地址的难度。  
+2. 数据执行保护（DEP/NX bit）利用CPU的NX（No-Execute）位标记内存页为“仅数据”，禁止在该页执行指令。  
+3. 栈保护（Stack Canaries）在函数栈帧返回地址前插入校验值，函数返回前验证其完整性以检测栈溢出。  
+4. 控制流完整性（CFI）通过编译器插桩或硬件支持（如ARM BTI、Intel CET），限制间接跳转目标必须位于合法函数入口。  
+
+三、典型类型与常见问题  
+1. 堆内存保护薄弱：传统malloc/free缺乏元数据校验，易受use-after-free、double-free等漏洞利用。  
+2. 内核空间保护不足：驱动程序或模块若绕过SMAP/SMEP检查，可导致用户态代码直接执行内核指令。  
+3. ASLR熵值不足：32位系统或嵌入式环境因地址空间小，随机化位数受限，实际熵值常低于8比特。  
+4. 编译器优化干扰：高阶优化（如LTO、函数内联）可能破坏CFI间接调用图，导致误报或漏报。  
+5. 固件层缺失保护：UEFI运行时服务内存区域通常无NX/SMAP防护，成为固件级提权攻击入口。  
+
+四、防御措施与实践建议  
+1. 开发阶段启用编译器保护选项：GCC/Clang应开启-fstack-protector-strong、-z relro、-z now、-fcf-protection=full。  
+2. 运行时强制启用内核级防护：Linux需配置CONFIG_STRICT_DEVMEM、CONFIG_PAGE_TABLE_ISOLATION、CONFIG_UNMAP_KERNEL_AT_EL0。  
+3. 对关键服务实施细粒度内存策略：使用mprotect()限制只读/可执行属性，避免RWX三者共存页。  
+4. 采用安全内存分配器：替换glibc malloc为Scudo、Hoard或Microsoft HeapAlloc with heap isolation。  
+5. 定期进行内存安全审计：结合AddressSanitizer（ASan）、MemorySanitizer（MSan）及静态分析工具（如Clang Static Analyzer）识别越界与未初始化访问。  
+6. 固件更新与验证：部署UEFI Secure Boot并启用Runtime Memory Protection（如TianoCore的SMM Guard）。

@@ -1,0 +1,30 @@
+通讯录与短信权限风险
+
+一、基本概念  
+1. 通讯录权限允许应用读取、写入或删除设备联系人信息，包括姓名、电话、邮箱、地址等结构化数据。  
+2. 短信权限分为读取、发送、接收三类，其中READ_SMS和RECEIVE_SMS可实时获取短信内容及元数据。  
+3. 这两类权限属于Android危险权限（Dangerous Permissions），需用户在运行时显式授权，不可在安装时默认授予。  
+4. iOS自iOS 6起限制通讯录访问，需用户逐项授权；iOS 10后进一步要求在Info.plist中声明NSContactsUsageDescription等用途说明。  
+5. 权限滥用不必然构成恶意行为，但为数据窃取、社工攻击、勒索或广告画像提供了关键入口。  
+
+二、原理与关键机制  
+1. Android通过Binder IPC机制将权限请求转发至PackageManagerService，由ActivityManagerService控制实际访问控制决策。  
+2. 应用调用ContentResolver.query()访问通讯录时，系统依据URI权限标签（如android.permission.READ_CONTACTS）进行动态校验。  
+3. 短信数据库（/data/data/com.android.providers.telephony/databases/mmssms.db）受SELinux策略保护，但已获权限应用可绕过部分沙箱限制。  
+4. iOS使用AddressBook框架（iOS 9前）或Contacts框架（iOS 9+），所有访问均经TCC（Transparency, Consent, and Control）服务统一鉴权并记录日志。  
+5. 权限粒度粗：Android 12前无法按联系人分组或短信类型（如验证码、银行通知）进行细粒度授权。  
+
+三、典型类型与常见问题  
+1. 合规性伪装：工具类应用以“备份联系人”为由申请READ_CONTACTS，实则上传至第三方服务器构建营销数据库。  
+2. 隐蔽复用：天气或手电筒类应用申请短信权限，用于拦截银行OTP并转发至攻击者C2服务器。  
+3. 权限劫持：恶意应用利用AccessibilityService辅助功能监听短信通知栏内容，规避READ_SMS权限限制。  
+4. 权限继承漏洞：Android 8.0以下WebView组件若启用file://协议且未禁用JavaScript，可被诱导读取本地通讯录文件。  
+5. 跨应用泄露：某社交App将通讯录哈希值上传至云端匹配好友，导致用户关系图谱被逆向推断。  
+
+四、防御措施与实践建议  
+1. 用户应拒绝非必要权限：如记账App无需读取短信，游戏App无需访问通讯录，授权前核查权限与功能逻辑关联性。  
+2. 安卓用户定期检查权限使用记录：进入设置→隐私→权限管理器→通讯录/短信，查看最近7天访问应用及频次。  
+3. 开发者须遵循最小权限原则：仅声明必需权限，在AndroidManifest.xml中添加tools:remove="android.permission.SEND_SMS"等剔除冗余声明。  
+4. iOS开发者必须实现CNContactStore.requestAccess(for: .contacts)回调处理，并在用户拒绝后提供降级功能而非强制退出。  
+5. 企业MDM方案应配置权限策略：禁止非办公类应用申请READ_SMS，对通讯录访问行为实施网络层DLP检测与阻断。  
+6. 测试阶段启用adb shell dumpsys package <pkg>验证权限实际授予状态，避免targetSdkVersion升级导致的隐式权限失效问题。

@@ -1,0 +1,30 @@
+云访问控制IAM
+
+一、基本概念  
+1. IAM（Identity and Access Management）是云平台中用于管理用户身份、权限分配与访问审计的核心服务。  
+2. 云IAM以策略（Policy）为权限定义单元，通过JSON格式声明式描述资源、操作、条件等授权要素。  
+3. 主体（Principal）包括用户、角色、服务账户和联合身份，其中角色是临时凭证的载体，不具长期密钥。  
+4. 资源（Resource）在云环境中具有全局唯一ARN（Amazon Resource Name）或等效标识符，如arn:aws:s3:::my-bucket。  
+5. 权限评估遵循显式拒绝优先、最小权限原则及策略合并逻辑，支持基于属性（ABAC）与基于角色（RBAC）混合模型。
+
+二、原理与关键机制  
+1. 访问决策由云控制平面实时执行：请求到达时解析主体身份、会话标签、上下文属性并匹配所有适用策略。  
+2. 角色扮演（AssumeRole）依赖安全令牌服务（STS），生成带时效性（默认1小时）的临时安全凭证。  
+3. 条件键（Condition Key）支持动态授权，如aws:SourceIp、aws:RequestedRegion、aws:MultiFactorAuthPresent等运行时校验。  
+4. 权限边界（Permissions Boundary）为角色或用户设置最高权限上限，无法被内嵌策略突破。  
+5. 服务控制策略（SCP）在AWS Organizations中实施租户级权限约束，仅影响成员账户，不授予权限。
+
+三、典型类型与常见问题  
+1. 过度宽松策略：如使用“*”通配符授权s3:*或Resource: “*”，导致横向越权与数据泄露风险。  
+2. 长期凭证滥用：用户主密钥（Access Key）未轮换或硬编码于代码/配置文件中，易被提取后持久化利用。  
+3. 角色信任策略配置错误：允许任意外部账户或未限定PrincipalArn，引发跨账户提权。  
+4. 权限蔓延（Privilege Creep）：用户岗位变动后未及时回收旧权限，积累高危能力。  
+5. 联合身份同步缺陷：SAML/OIDC IdP断言未校验audience或未绑定会话策略，导致越权访问。
+
+四、防御措施与实践建议  
+1. 强制启用MFA并配置为所有敏感操作（如删除KMS密钥、修改IAM策略）的必要条件。  
+2. 使用IAM Access Analyzer持续扫描策略，识别外部可访问资源与过度授权路径。  
+3. 采用权限边界+内嵌策略双层控制，对生产环境角色设置严格边界，禁止AttachUserPolicy等高危操作。  
+4. 实施凭证生命周期自动化管理：Access Key 90天自动禁用，STS临时凭证最大会话时长设为15分钟。  
+5. 对开发测试环境启用沙箱账户，通过SCP禁止创建IAM实体、启用EC2实例元数据服务v1等高风险配置。  
+6. 审计日志接入CloudTrail并配置异常检测：监控CreatePolicyVersion、UpdateAssumeRolePolicy等敏感API调用频次与来源IP。

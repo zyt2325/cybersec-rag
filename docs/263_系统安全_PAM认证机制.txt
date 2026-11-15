@@ -1,0 +1,30 @@
+PAM认证机制
+
+一、基本概念  
+1. PAM（Pluggable Authentication Modules）是Linux/Unix系统中实现认证逻辑与服务程序解耦的标准化框架。  
+2. 它通过动态加载模块的方式，使登录、sudo、passwd等服务无需修改源码即可定制认证策略。  
+3. 每个PAM-aware服务对应独立配置文件（如/etc/pam.d/sshd），定义四类管理组：auth、account、password、session。  
+4. PAM配置采用“控制标志+模块路径+模块参数”三元组结构，支持required、requisite、sufficient、optional等控制流语义。  
+5. 模块间按配置顺序串行执行，同一管理组内各模块协同完成单次认证会话的完整校验流程。
+
+二、原理与关键机制  
+1. 认证请求由应用程序调用libpam库发起，PAM核心根据服务名加载对应配置并解析模块依赖关系。  
+2. auth组负责凭证验证（如密码比对、多因素触发），account组执行账号状态检查（如过期、锁定、时间限制）。  
+3. password组管理凭证更新（如新旧密码强度校验、历史密码比对），session组处理会话生命周期（如环境变量设置、日志记录）。  
+4. 控制标志决定模块失败时的流程走向：requisite失败立即终止，sufficient成功即跳过后续同组模块。  
+5. 模块可共享数据（pam_handle_t）在各阶段传递上下文，例如auth阶段获取的用户UID供account阶段权限判定使用。
+
+三、典型类型与常见问题  
+1. 常见模块包括pam_unix（本地密码）、pam_ldap（目录服务）、pam_google_authenticator（TOTP）、pam_faillock（暴力防护）。  
+2. 配置错误易导致服务拒绝：如auth required pam_deny.so未设fallback，将阻断所有合法登录。  
+3. 模块顺序不当引发逻辑漏洞：password requisite置于sufficient之后，可能绕过新密码强度检查。  
+4. 会话劫持风险：pam_exec模块若以root权限执行不可信脚本，可能被利用提权。  
+5. 时间同步缺陷：依赖NTP的OTP模块在系统时钟偏差超窗口时，造成合法用户频繁认证失败。
+
+四、防御措施与实践建议  
+1. 采用最小权限原则配置模块参数，禁用pam_permit.so等无条件放行模块，除非明确用于测试环境。  
+2. 对关键服务（如sshd、sudo）启用faillock模块，设置尝试次数上限（deny=5）及锁定时长（unlock_time=900）。  
+3. 密码策略须组合使用pam_pwquality.so（复杂度）与pam_pwhistory.so（历史记录），防止弱口令复用。  
+4. 审计配置一致性：定期用pam-config工具或shell脚本校验/etc/pam.d/下各文件是否启用account required pam_time.so等合规项。  
+5. 多因素认证应部署在auth [success=ok default=bad]层级，确保主凭证通过后才触发第二因素，避免旁路风险。  
+6. 禁用未使用的PAM模块（如pam_console.so在现代systemd系统中已废弃），减少攻击面与配置维护负担。
